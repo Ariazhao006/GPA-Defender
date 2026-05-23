@@ -1,0 +1,9 @@
+/build/
+*.exe
+*.obj
+*.o
+*.pdb
+*.ilk
+*.stackdump
+.DS_Store
+Thumbs.db
