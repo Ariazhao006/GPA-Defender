@@ -14,7 +14,7 @@ namespace frontend {
 static Font gUiFont;
 
 void setUiFont(Font font) { gUiFont = font; }
-Font getUiFont() { return gUiFont; }
+const Font& getUiFont() { return gUiFont; }
 
 int measureTextF(const char* text, int fontSize) {
     Vector2 sz = MeasureTextEx(gUiFont, text, static_cast<float>(fontSize), 1.0f);
@@ -107,6 +107,26 @@ Color phaseColor(GamePhase phase) {
     case GamePhase::Victory:     return Color{80, 180, 80, 255};
     default:                     return GRAY;
     }
+}
+
+Color chestColor(ChestType type) {
+    switch (type) {
+    case ChestType::Memory: return Color{150, 150, 200, 255};
+    case ChestType::Hell:   return Color{200, 60, 60, 255};
+    case ChestType::Reward: return Color{255, 200, 50, 255};
+    case ChestType::Gamble: return Color{50, 200, 100, 255};
+    }
+    return WHITE;
+}
+
+const char* chestLabel(ChestType type) {
+    switch (type) {
+    case ChestType::Memory: return "?";
+    case ChestType::Hell:   return "!";
+    case ChestType::Reward: return "$";
+    case ChestType::Gamble: return "%";
+    }
+    return "";
 }
 
 Vector2 gridToScreen(int row, int col) {
@@ -334,7 +354,8 @@ void drawExerciseGuide(int x, int y, int width) {
 }
 
 void drawUI(const GameSnapshot& snap, int gold, TowerKind selectedTower,
-            bool exerciseMode, int selectedTowerIndex, bool showExerciseGuide) {
+            bool exerciseMode, int selectedTowerIndex, bool showExerciseGuide,
+            float timeScale) {
     int x = UI_PANEL_X;
     int w = UI_PANEL_WIDTH;
 
@@ -347,13 +368,14 @@ void drawUI(const GameSnapshot& snap, int gold, TowerKind selectedTower,
     drawTextF(GameEngine::phaseName(snap.phase), lx, y, 22, phaseColor(snap.phase));
     y += 30;
 
-    char buf[64];
-    snprintf(buf, sizeof(buf), "Gold: %d", gold);
-    drawTextF(buf, lx, y, 20, GOLD);
+    drawTextF(("Gold: " + std::to_string(gold)).c_str(), lx, y, 20, GOLD);
     y += 10;
-    snprintf(buf, sizeof(buf), "Wave: %d/%d", snap.waveIndex + 1, 3);
-    drawTextF(buf, lx, y, 16, LIGHTGRAY);
-    y += 30;
+    drawTextF(("Wave: " + std::to_string(snap.waveIndex + 1) + "/3").c_str(),
+              lx, y, 16, LIGHTGRAY);
+    y += 10;
+    drawTextF(("Level: " + std::to_string(snap.levelIndex) + "/4").c_str(),
+              lx, y, 16, LIGHTGRAY);
+    y += 20;
 
     DrawLine(x + 10, y, x + w - 10, y, Color{80, 80, 100, 200});
     y += 12;
@@ -412,8 +434,8 @@ void drawUI(const GameSnapshot& snap, int gold, TowerKind selectedTower,
 
             Color tc = towerColor(tnames[i]);
             DrawCircle(lx + 14, y + 13, 6, tc);
-            snprintf(buf, sizeof(buf), "%s  %dg", tnames[i], costs[i]);
-            drawTextF(buf, lx + 26, y + 4, 16, (gold >= costs[i]) ? tc : GRAY);
+            std::string towerLabel = std::string(tnames[i]) + "  " + std::to_string(costs[i]) + "g";
+            drawTextF(towerLabel.c_str(), lx + 26, y + 4, 16, (gold >= costs[i]) ? tc : GRAY);
 
             y += 30;
         }
@@ -460,6 +482,14 @@ void drawUI(const GameSnapshot& snap, int gold, TowerKind selectedTower,
         y += 16;
         drawTextF("Tower DPS at 65%", lx, y, 12, Color{255, 200, 100, 255});
     }
+
+    // 时间缩放显示
+    if (timeScale != 1.0f) {
+        y += 20;
+        char speedBuf[64];
+        snprintf(speedBuf, sizeof(speedBuf), "Speed: %.1fx", timeScale);
+        drawTextF(speedBuf, lx, y, 14, Color{255, 200, 50, 255});
+    }
 }
 
 void drawMainMenu() {
@@ -489,38 +519,68 @@ void drawMainMenu() {
     drawTextF(info, SCREEN_WIDTH / 2 - tw / 2, 570, 14, GRAY);
 }
 
-void drawGameOver() {
+void drawGameOver(int selection) {
     DrawRectangle(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT,
                   Color{0, 0, 0, 180});
 
     const char* msg = "GAME OVER";
     int tw = measureTextF(msg, 52);
-    drawTextF(msg, SCREEN_WIDTH / 2 - tw / 2, 300, 52, Color{220, 60, 60, 255});
+    drawTextF(msg, SCREEN_WIDTH / 2 - tw / 2, 260, 52, Color{220, 60, 60, 255});
 
     const char* hint = "Your GPA has fallen below threshold...";
     tw = measureTextF(hint, 18);
-    drawTextF(hint, SCREEN_WIDTH / 2 - tw / 2, 380, 18, LIGHTGRAY);
+    drawTextF(hint, SCREEN_WIDTH / 2 - tw / 2, 340, 18, LIGHTGRAY);
 
-    hint = "Press ENTER to return to menu";
-    tw = measureTextF(hint, 18);
-    drawTextF(hint, SCREEN_WIDTH / 2 - tw / 2, 430, 18, GRAY);
+    const char* retry = "Retry This Level";
+    const char* menu = "Return to Main Menu";
+
+    Color retryColor = (selection == 0) ? Color{255, 220, 100, 255} : GRAY;
+    Color menuColor  = (selection == 1) ? Color{255, 220, 100, 255} : GRAY;
+
+    tw = measureTextF(retry, 20);
+    drawTextF(retry, SCREEN_WIDTH / 2 - tw / 2, 400, 20, retryColor);
+
+    tw = measureTextF(menu, 20);
+    drawTextF(menu, SCREEN_WIDTH / 2 - tw / 2, 440, 20, menuColor);
+
+    hint = "Use UP/DOWN to select, ENTER to confirm";
+    tw = measureTextF(hint, 14);
+    drawTextF(hint, SCREEN_WIDTH / 2 - tw / 2, 500, 14, DARKGRAY);
 }
 
-void drawVictory() {
+void drawVictory(int selection, bool hasNextLevel) {
     DrawRectangle(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT,
                   Color{0, 0, 0, 180});
 
     const char* msg = "VICTORY!";
     int tw = measureTextF(msg, 52);
-    drawTextF(msg, SCREEN_WIDTH / 2 - tw / 2, 300, 52, Color{80, 220, 80, 255});
+    drawTextF(msg, SCREEN_WIDTH / 2 - tw / 2, 260, 52, Color{80, 220, 80, 255});
 
     const char* hint = "You have successfully defended your GPA!";
     tw = measureTextF(hint, 18);
-    drawTextF(hint, SCREEN_WIDTH / 2 - tw / 2, 380, 18, LIGHTGRAY);
+    drawTextF(hint, SCREEN_WIDTH / 2 - tw / 2, 340, 18, LIGHTGRAY);
 
-    hint = "Press ENTER to return to menu";
-    tw = measureTextF(hint, 18);
-    drawTextF(hint, SCREEN_WIDTH / 2 - tw / 2, 430, 18, GRAY);
+    const char* nextLevel = "Continue to Next Level";
+    const char* menu = "Return to Main Menu";
+
+    if (hasNextLevel) {
+        Color nextColor = (selection == 0) ? Color{255, 220, 100, 255} : GRAY;
+        Color menuColor = (selection == 1) ? Color{255, 220, 100, 255} : GRAY;
+
+        tw = measureTextF(nextLevel, 20);
+        drawTextF(nextLevel, SCREEN_WIDTH / 2 - tw / 2, 400, 20, nextColor);
+
+        tw = measureTextF(menu, 20);
+        drawTextF(menu, SCREEN_WIDTH / 2 - tw / 2, 440, 20, menuColor);
+    } else {
+        Color menuColor = (selection == 0) ? Color{255, 220, 100, 255} : GRAY;
+        tw = measureTextF(menu, 20);
+        drawTextF(menu, SCREEN_WIDTH / 2 - tw / 2, 400, 20, menuColor);
+    }
+
+    hint = "Use UP/DOWN to select, ENTER to confirm";
+    tw = measureTextF(hint, 14);
+    drawTextF(hint, SCREEN_WIDTH / 2 - tw / 2, 500, 14, DARKGRAY);
 }
 
 void drawQuestionnaire(const Questionnaire& q, int current,
@@ -536,11 +596,10 @@ void drawQuestionnaire(const Questionnaire& q, int current,
     int tw = measureTextF(title, 32);
     drawTextF(title, SCREEN_WIDTH / 2 - tw / 2, 40, 32, WHITE);
 
-    char buf[32];
-    snprintf(buf, sizeof(buf), "Question %d / %d", current + 1,
-             static_cast<int>(questions.size()));
-    tw = measureTextF(buf, 16);
-    drawTextF(buf, SCREEN_WIDTH / 2 - tw / 2, 80, 16, GRAY);
+    std::string progress = "Question " + std::to_string(current + 1) + " / " +
+                           std::to_string(static_cast<int>(questions.size()));
+    tw = measureTextF(progress.c_str(), 16);
+    drawTextF(progress.c_str(), SCREEN_WIDTH / 2 - tw / 2, 80, 16, GRAY);
 
     DrawRectangle(60, 125, SCREEN_WIDTH - 120, 86, Color{30, 30, 50, 255});
     DrawRectangleLines(60, 125, SCREEN_WIDTH - 120, 86, Color{80, 80, 120, 255});
@@ -557,9 +616,8 @@ void drawQuestionnaire(const Questionnaire& q, int current,
         DrawRectangleLines(100, oy, SCREEN_WIDTH - 200, optionHeight,
                            selected ? WHITE : Color{80, 80, 120, 255});
 
-        char label[8];
-        snprintf(label, sizeof(label), "%zu.", i + 1);
-        drawTextF(label, 120, oy + 11, 18, LIGHTGRAY);
+        std::string label = std::to_string(i + 1) + ".";
+        drawTextF(label.c_str(), 120, oy + 11, 18, LIGHTGRAY);
 
         const std::vector<std::string> optionLines =
             splitTextLines(question.options[i].text);
@@ -633,10 +691,9 @@ void drawAstiSummary(const AstiResult& result) {
         DrawCircle(cardX + 28, y + 23, 8, c);
         drawTextF(names[i], cardX + 52, y + 12, 20, LIGHTGRAY);
 
-        char valueBuf[16];
-        snprintf(valueBuf, sizeof(valueBuf), "%d", values[i]);
-        int valueW = measureTextF(valueBuf, 24);
-        drawTextF(valueBuf, cardX + cardW - valueW - 34, y + 10, 24, c);
+        std::string valueStr = std::to_string(values[i]);
+        int valueW = measureTextF(valueStr.c_str(), 24);
+        drawTextF(valueStr.c_str(), cardX + cardW - valueW - 34, y + 10, 24, c);
     }
 
     const char* hint = "按 Enter 继续进入游戏";
@@ -644,6 +701,43 @@ void drawAstiSummary(const AstiResult& result) {
     float alpha = 0.5f + 0.5f * sinf(static_cast<float>(GetTime()) * 3.0f);
     drawTextF(hint, SCREEN_WIDTH / 2 - tw / 2, SCREEN_HEIGHT - 82, 20,
               Color{255, 255, 255, static_cast<unsigned char>(alpha * 255)});
+}
+
+void drawChests(const std::vector<Chest>& chests) {
+    constexpr float kChestLifetime = 15.0f;
+    constexpr int kChestWidth = 32;
+    constexpr int kChestHeight = 24;
+    constexpr int kChestLabelSize = 16;
+    constexpr int kTimerBarHeight = 4;
+
+    for (const Chest& chest : chests) {
+        if (chest.state != ChestState::Active) continue;
+
+        int x = static_cast<int>(chest.position.x + MAP_OFFSET_X);
+        int y = static_cast<int>(chest.position.y + MAP_OFFSET_Y + chest.bounceOffset);
+
+        Color color = chestColor(chest.type);
+        const char* label = chestLabel(chest.type);
+
+        // 绘制宝箱底座
+        DrawRectangle(x - kChestWidth / 2, y - kChestHeight / 2,
+                      kChestWidth, kChestHeight, color);
+        DrawRectangleLines(x - kChestWidth / 2, y - kChestHeight / 2,
+                           kChestWidth, kChestHeight, WHITE);
+
+        // 绘制标签
+        int tw = measureTextF(label, kChestLabelSize);
+        drawTextF(label, x - tw / 2, y - kChestLabelSize / 2,
+                  kChestLabelSize, WHITE);
+
+        // 绘制倒计时条
+        float ratio = chest.timer / kChestLifetime;
+        DrawRectangle(x - kChestWidth / 2, y + kChestHeight / 2 + 2,
+                      kChestWidth, kTimerBarHeight, Color{50, 50, 50, 200});
+        DrawRectangle(x - kChestWidth / 2, y + kChestHeight / 2 + 2,
+                      static_cast<int>(kChestWidth * ratio), kTimerBarHeight,
+                      ratio > 0.3f ? GREEN : RED);
+    }
 }
 
 }  // namespace frontend

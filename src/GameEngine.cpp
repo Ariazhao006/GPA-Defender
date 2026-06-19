@@ -58,14 +58,16 @@ void GameEngine::update(float deltaTime) {
     if (deltaTime < 0.0f) return;
     if (phase != GamePhase::WaveRunning) return;
 
-    updatePhysicalStat(deltaTime);
+    float scaledDelta = deltaTime * timeScale;
+
+    updatePhysicalStat(scaledDelta);
     if (!player.isAlive()) {
         phase = GamePhase::GameOver;
         return;
     }
 
-    waveManager.updateSpawning(deltaTime);
-    waveManager.updateEnemies(deltaTime, player);
+    waveManager.updateSpawning(scaledDelta);
+    waveManager.updateEnemies(scaledDelta, player);
     if (!player.isAlive()) {
         phase = GamePhase::GameOver;
         return;
@@ -74,8 +76,8 @@ void GameEngine::update(float deltaTime) {
     std::vector<Enemy*> liveEnemies = waveManager.getLiveEnemies();
     std::vector<bool> aliveBeforeTowerUpdate = waveManager.captureAliveStates();
     const float towerDeltaTime = player.getExerciseMode()
-        ? deltaTime * kExerciseTowerCadenceScale
-        : deltaTime;
+        ? scaledDelta * kExerciseTowerCadenceScale
+        : scaledDelta;
 
     for (std::unique_ptr<DefenseTower>& tower : towers) {
         if (tower != nullptr) {
@@ -162,6 +164,16 @@ void GameEngine::setExerciseMode(bool on) {
     player.setExerciseMode(on);
     physicalDecayTimer = 0.0f;
     physicalRecoveryTimer = 0.0f;
+}
+
+void GameEngine::setTimeScale(float scale) {
+    if (scale < 0.5f) scale = 0.5f;
+    if (scale > 5.0f) scale = 5.0f;
+    timeScale = scale;
+}
+
+void GameEngine::setPaths(std::vector<std::vector<Vector2D>> pathDefinitions) {
+    waveManager.setPaths(std::move(pathDefinitions));
 }
 
 GameSnapshot GameEngine::getSnapshot() const {

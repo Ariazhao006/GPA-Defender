@@ -63,6 +63,7 @@ private:
 
     float physicalDecayTimer = 0.0f;
     float physicalRecoveryTimer = 0.0f;
+    float timeScale = 1.0f;
 
     std::vector<WaveDefinition> waves;
     WaveManager waveManager;
@@ -92,6 +93,11 @@ public:
 
     void setExerciseMode(bool on);
     bool getExerciseMode() const { return player.getExerciseMode(); }
+
+    void setTimeScale(float scale);
+    float getTimeScale() const { return timeScale; }
+
+    void setPaths(std::vector<std::vector<Vector2D>> pathDefinitions);
 
     GameSnapshot getSnapshot() const;
     GamePhase getPhase() const { return phase; }

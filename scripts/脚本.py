@@ -21,7 +21,8 @@ def merge_code_files(root_dir, output_file, allowed_extensions):
                         with open(filepath, 'r', encoding='utf-8') as infile:
                             content = infile.read()
                     except UnicodeDecodeError:
-                        # 第二步：如果报编码错误，回退到国内 Windows 常见的 gb18030 (兼容 gbk) 读取
+                        # 第二步：如果报编码错误，回退到国内 Windows 常见的
+                        # gb18030 (兼容 gbk) 读取
                         try:
                             with open(filepath, 'r', encoding='gb18030') as infile:
                                 content = infile.read()
@@ -33,13 +34,13 @@ def merge_code_files(root_dir, output_file, allowed_extensions):
                         continue
 
                     # 成功读取后写入合并文件
-                    outfile.write(f"// " + "="*40 + "\n")
+                    outfile.write("// " + "="*40 + "\n")
                     outfile.write(f"// File: {rel_path}\n")
-                    outfile.write(f"// " + "="*40 + "\n")
-                    
+                    outfile.write("// " + "="*40 + "\n")
+
                     outfile.write("```cpp\n")
                     outfile.write(content)
-                    
+
                     if not content.endswith('\n'):
                         outfile.write("\n")
                     outfile.write("```\n\n")

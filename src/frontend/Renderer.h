@@ -5,6 +5,7 @@
 #include "gpa_defender/Enemy.h"
 #include "gpa_defender/GameEngine.h"
 #include "gpa_defender/Questionnaire.h"
+#include "frontend/ChestManager.h"
 #include "raylib.h"
 #include <vector>
 #include <string>
@@ -26,13 +27,15 @@ Color towerColor(const std::string& name);
 Color enemyColor(const std::string& name);
 Color indicatorColor(int idx);
 Color phaseColor(GamePhase phase);
+Color chestColor(ChestType type);
+const char* chestLabel(ChestType type);
 
 Vector2 gridToScreen(int row, int col);
 bool screenToGrid(Vector2 screenPos, int& outRow, int& outCol);
 
 // Font management for CJK text rendering
 void setUiFont(Font font);
-Font getUiFont();
+const Font& getUiFont();
 int measureTextF(const char* text, int fontSize);
 void drawTextF(const char* text, int x, int y, int fontSize, Color color);
 
@@ -43,10 +46,12 @@ void drawTowers(const std::vector<std::unique_ptr<DefenseTower>>& towers,
 void drawEnemy(const Enemy& enemy);
 void drawEnemies(const std::vector<Enemy*>& enemies);
 void drawUI(const GameSnapshot& snap, int gold, TowerKind selectedTower,
-            bool exerciseMode, int selectedTowerIndex, bool showExerciseGuide);
+            bool exerciseMode, int selectedTowerIndex, bool showExerciseGuide,
+            float timeScale = 1.0f);
 void drawMainMenu();
-void drawGameOver();
-void drawVictory();
+void drawGameOver(int selection);
+void drawVictory(int selection, bool hasNextLevel);
+void drawChests(const std::vector<Chest>& chests);
 void drawQuestionnaire(const Questionnaire& q, int current,
                        const std::vector<int>& answers);
 void drawAstiSummary(const AstiResult& result);

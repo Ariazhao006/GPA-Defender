@@ -5,7 +5,9 @@ project(gpa_defender LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
-add_compile_options(/utf-8)
+if(MSVC)
+    add_compile_options(/utf-8)
+endif()
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
@@ -63,6 +65,7 @@ add_executable(gpa_defender_gui
     src/frontend/GameFrontend.cpp
     src/frontend/Renderer.cpp
     src/frontend/AudioManager.cpp
+    src/frontend/ChestManager.cpp
 )
 target_include_directories(gpa_defender_gui PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/include

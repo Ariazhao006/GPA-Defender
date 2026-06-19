@@ -6,6 +6,7 @@
 #include "gpa_defender/Vector2D.h"
 #include "gpa_defender/WaveManager.h"
 #include "frontend/AudioManager.h"
+#include "frontend/ChestManager.h"
 #include "raylib.h"
 #include <vector>
 #include <string>
@@ -42,12 +43,26 @@ private:
     int prevEnemyCount = 0;
     GamePhase prevPhase = GamePhase::PreGame;
 
+    int currentLevel = 1;           // 1-4 对应大一到大四
+    int gameOverMenuSelection = 0;  // 0 = 重试本关, 1 = 返回主菜单
+    int victoryMenuSelection = 0;   // 0 = 进入下一关/返回主菜单, 1 = 返回主菜单
+
+    ChestManager chestManager;
+    std::vector<Vector2D> highlandPositions;
+
     static const std::vector<std::vector<int>> MAP_DATA;
+    static const std::vector<std::vector<int>> MAP_DATA_LEVEL2;
+    static const std::vector<std::vector<int>> MAP_DATA_LEVEL3;
+    static const std::vector<std::vector<int>> MAP_DATA_LEVEL4;
 
     void initMap();
     void initPaths();
     void initWaves();
+    void initWavesForLevel(int level);
     void initEngine();
+
+    void retryCurrentLevel();
+    void goToNextLevel();
 
     void runMainMenu();
     void runQuestionnaire();
