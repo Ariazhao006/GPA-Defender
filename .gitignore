@@ -1,4 +1,8 @@
 /build/
+/out/
+/.vs/
+/.claude/
+CMakeSettings.json
 *.exe
 *.obj
 *.o

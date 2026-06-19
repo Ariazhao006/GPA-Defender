@@ -63,6 +63,9 @@ public:
     EnemyState getState() const { return state; }
     Rect getBoundingBox() const { return boundingBox; }
     int getHp() const { return currentHp; }
+    int getMaxHp() const { return maxHp; }
+    const std::string& getName() const { return name; }
+    Vector2D getPosition() const { return position; }
     float getEffectiveMoveSpeed() const;
 };
 

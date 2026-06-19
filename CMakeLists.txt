@@ -5,6 +5,7 @@ project(gpa_defender LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
+add_compile_options(/utf-8)
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
@@ -45,3 +46,27 @@ target_link_libraries(full_flow_smoke PRIVATE gpa_defender_core)
 
 add_test(NAME backend_smoke COMMAND backend_smoke)
 add_test(NAME full_flow_smoke COMMAND full_flow_smoke)
+
+# ========== GUI Frontend ==========
+include(FetchContent)
+FetchContent_Declare(
+    raylib
+    GIT_REPOSITORY https://gitee.com/mirrors/raylib.git
+    GIT_TAG 5.0
+    GIT_SHALLOW TRUE
+)
+set(BUILD_EXAMPLES OFF CACHE INTERNAL "")
+FetchContent_MakeAvailable(raylib)
+
+add_executable(gpa_defender_gui
+    src/gui_main.cpp
+    src/frontend/GameFrontend.cpp
+    src/frontend/Renderer.cpp
+    src/frontend/AudioManager.cpp
+)
+target_include_directories(gpa_defender_gui PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/src
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/frontend
+)
+target_link_libraries(gpa_defender_gui PRIVATE gpa_defender_core raylib)
