@@ -1,0 +1,13 @@
+/build/
+/out/
+/.vs/
+/.claude/
+CMakeSettings.json
+*.exe
+*.obj
+*.o
+*.pdb
+*.ilk
+*.stackdump
+.DS_Store
+Thumbs.db

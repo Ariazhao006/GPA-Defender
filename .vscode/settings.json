@@ -1,0 +1,16 @@
+{
+    "files.encoding": "utf8",
+    "files.autoGuessEncoding": true,
+    "cmake.sourceDirectory": "${workspaceFolder}",
+    "cmake.generator": "MinGW Makefiles",
+    "cmake.cmakePath": "C:\\msys64\\ucrt64\\bin\\cmake.exe",
+    "cmake.configureSettings": {
+        "CMAKE_MAKE_PROGRAM": "C:/msys64/mingw64/bin/mingw32-make.exe",
+        "CMAKE_C_COMPILER": "C:/msys64/ucrt64/bin/clang.exe",
+        "CMAKE_CXX_COMPILER": "C:/msys64/ucrt64/bin/clang++.exe",
+        "CMAKE_POLICY_VERSION_MINIMUM": "3.5"
+    },
+    "cmake.environment": {
+        "PATH": "C:\\msys64\\usr\\bin;C:\\msys64\\ucrt64\\bin;C:\\msys64\\mingw64\\bin"
+    }
+}
