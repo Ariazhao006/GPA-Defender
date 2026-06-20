@@ -49,6 +49,7 @@ void drawUI(const GameSnapshot& snap, int gold, TowerKind selectedTower,
             bool exerciseMode, int selectedTowerIndex, bool showExerciseGuide,
             float timeScale = 1.0f);
 void drawMainMenu();
+void drawLevelSelect(int unlockedLevel, int hoveredLevel);
 void drawGameOver(int selection);
 void drawVictory(int selection, bool hasNextLevel);
 void drawChests(const std::vector<Chest>& chests);
