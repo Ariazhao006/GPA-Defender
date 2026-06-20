@@ -74,16 +74,25 @@ Color towerColor(const std::string& name) {
 }
 
 Color enemyColor(const std::string& name) {
-    if (name.find("期中") != std::string::npos)       return Color{180, 30, 30, 255};
-    if (name.find("微积分") != std::string::npos || name.find("线代") != std::string::npos)
+    if (name.find("期中") != std::string::npos || name.find("Midterm") != std::string::npos)
+        return Color{180, 30, 30, 255};
+    if (name.find("微积分") != std::string::npos || name.find("线代") != std::string::npos ||
+        name.find("Calculus") != std::string::npos)
         return RED;
-    if (name.find("科研") != std::string::npos)       return Color{100, 0, 100, 255};
-    if (name.find("社交") != std::string::npos)       return GOLD;
-    if (name.find("早八") != std::string::npos)       return ORANGE;
-    if (name.find("小组") != std::string::npos)       return GRAY;
-    if (name.find("短视频") != std::string::npos)     return MAGENTA;
-    if (name.find("考纲") != std::string::npos)       return LIME;
-    if (name.find("同辈") != std::string::npos || name.find("压力") != std::string::npos)
+    if (name.find("科研") != std::string::npos || name.find("Research") != std::string::npos)
+        return Color{100, 0, 100, 255};
+    if (name.find("社交") != std::string::npos || name.find("Friends") != std::string::npos)
+        return GOLD;
+    if (name.find("早八") != std::string::npos || name.find("Morning") != std::string::npos)
+        return ORANGE;
+    if (name.find("小组") != std::string::npos || name.find("Group") != std::string::npos)
+        return GRAY;
+    if (name.find("短视频") != std::string::npos || name.find("Video") != std::string::npos)
+        return MAGENTA;
+    if (name.find("考纲") != std::string::npos || name.find("Syllabus") != std::string::npos)
+        return LIME;
+    if (name.find("同辈") != std::string::npos || name.find("压力") != std::string::npos ||
+        name.find("Pressure") != std::string::npos)
         return SKYBLUE;
     return RED;
 }
@@ -519,6 +528,79 @@ void drawMainMenu() {
     drawTextF(info, SCREEN_WIDTH / 2 - tw / 2, 570, 14, GRAY);
 }
 
+void drawLevelSelect(int unlockedLevel, int hoveredLevel) {
+    DrawRectangle(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, Color{20, 20, 35, 255});
+
+    const char* title = "选择关卡";
+    int tw = measureTextF(title, 42);
+    drawTextF(title, SCREEN_WIDTH / 2 - tw / 2, 72, 42, WHITE);
+
+    const char* subtitle = "完成关卡后会解锁下一关";
+    tw = measureTextF(subtitle, 18);
+    drawTextF(subtitle, SCREEN_WIDTH / 2 - tw / 2, 128, 18, LIGHTGRAY);
+
+    const int cardW = 190;
+    const int cardH = 170;
+    const int gap = 35;
+    const int totalW = cardW * 4 + gap * 3;
+    const int startX = SCREEN_WIDTH / 2 - totalW / 2;
+    const int cardY = 230;
+    const char* levelNames[] = {"大一", "大二", "大三", "大四"};
+
+    for (int i = 0; i < 4; ++i) {
+        int level = i + 1;
+        bool unlocked = level <= unlockedLevel;
+        bool hovered = hoveredLevel == level && unlocked;
+
+        float scale = hovered ? 1.08f : 1.0f;
+        int w = static_cast<int>(cardW * scale);
+        int h = static_cast<int>(cardH * scale);
+        int x = startX + i * (cardW + gap) - (w - cardW) / 2;
+        int y = cardY - (h - cardH) / 2;
+
+        Color bg = unlocked ? Color{36, 36, 58, 255} : Color{26, 26, 38, 255};
+        Color border = hovered ? Color{255, 220, 100, 255}
+                               : (unlocked ? Color{90, 90, 140, 255} : Color{70, 70, 85, 255});
+        DrawRectangle(x, y, w, h, bg);
+        DrawRectangleLines(x, y, w, h, border);
+
+        char levelBuf[32];
+        snprintf(levelBuf, sizeof(levelBuf), "LEVEL %d", level);
+        tw = measureTextF(levelBuf, 16);
+        drawTextF(levelBuf, x + w / 2 - tw / 2, y + 30, 16,
+                  unlocked ? Color{180, 190, 230, 255} : Color{95, 95, 110, 255});
+
+        tw = measureTextF(levelNames[i], 34);
+        drawTextF(levelNames[i], x + w / 2 - tw / 2, y + 66, 34,
+                  unlocked ? WHITE : Color{110, 110, 125, 255});
+
+        const char* status = unlocked ? "已解锁" : "LOCKED";
+        tw = measureTextF(status, unlocked ? 17 : 20);
+        drawTextF(status, x + w / 2 - tw / 2, y + 122, unlocked ? 17 : 20,
+                  unlocked ? Color{90, 220, 130, 255} : Color{210, 85, 85, 255});
+    }
+
+    Rectangle retryRect{
+        SCREEN_WIDTH / 2.0f - 140.0f,
+        660.0f,
+        280.0f,
+        48.0f
+    };
+    bool retryHovered = CheckCollisionPointRec(GetMousePosition(), retryRect);
+    Color retryBg = retryHovered ? Color{60, 60, 92, 255} : Color{38, 38, 58, 255};
+    Color retryBorder = retryHovered ? Color{255, 220, 100, 255} : Color{90, 90, 130, 255};
+    DrawRectangleRec(retryRect, retryBg);
+    DrawRectangleLinesEx(retryRect, 1.0f, retryBorder);
+
+    const char* retry = "Retry ASTI test";
+    tw = measureTextF(retry, 20);
+    drawTextF(retry,
+              static_cast<int>(retryRect.x + retryRect.width / 2 - tw / 2),
+              static_cast<int>(retryRect.y + 13),
+              20,
+              retryHovered ? WHITE : LIGHTGRAY);
+}
+
 void drawGameOver(int selection) {
     DrawRectangle(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT,
                   Color{0, 0, 0, 180});
@@ -527,7 +609,7 @@ void drawGameOver(int selection) {
     int tw = measureTextF(msg, 52);
     drawTextF(msg, SCREEN_WIDTH / 2 - tw / 2, 260, 52, Color{220, 60, 60, 255});
 
-    const char* hint = "Your GPA has fallen below threshold...";
+    const char* hint = "Your Score has fallen below threshold...";
     tw = measureTextF(hint, 18);
     drawTextF(hint, SCREEN_WIDTH / 2 - tw / 2, 340, 18, LIGHTGRAY);
 

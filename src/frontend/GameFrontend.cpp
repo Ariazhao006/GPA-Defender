@@ -450,7 +450,8 @@ void GameFrontend::initWavesForLevel(int level) {
     engine = GameEngine(waves, wavePaths, startingGold);
 }
 
-void GameFrontend::retryCurrentLevel() {
+void GameFrontend::startLevel(int level) {
+    currentLevel = std::clamp(level, 1, 4);
     initMap();
     initPaths();
     initWavesForLevel(currentLevel);
@@ -461,26 +462,21 @@ void GameFrontend::retryCurrentLevel() {
     showExerciseGuide = false;
     hoveredRow = -1;
     hoveredCol = -1;
+    gameOverMenuSelection = 0;
+    victoryMenuSelection = 0;
     currentScreen = Screen::Game;
     audio.startBGM();
 }
 
+void GameFrontend::retryCurrentLevel() {
+    startLevel(currentLevel);
+}
+
 void GameFrontend::goToNextLevel() {
     if (currentLevel < 4) {
-        ++currentLevel;
+        unlockedLevel = std::max(unlockedLevel, currentLevel + 1);
+        startLevel(currentLevel + 1);
     }
-    initMap();
-    initPaths();
-    initWavesForLevel(currentLevel);
-    engine.setPaths(wavePaths);
-    engine.initializeFromAsti(astiResult);
-    chestManager.reset();
-    selectedTowerIndex = -1;
-    showExerciseGuide = false;
-    hoveredRow = -1;
-    hoveredCol = -1;
-    currentScreen = Screen::Game;
-    audio.startBGM();
 }
 
 void GameFrontend::initEngine() {
@@ -518,6 +514,7 @@ void GameFrontend::run() {
         "单次攻击很重出手间隔较长适合守住关键路口"
         "沿一个方向直线攻击放置前按R切换朝向付费转向点击高台格子放置当前塔已选中地图上的塔"
         "运动模式开启后会慢慢恢复身体健康代价是防御塔火力节奏下降适合身体指标接近阈值时救急再次点击Exercise可关闭"
+        "选择关卡大一大二大三大四完成关卡后会解锁下一关已解锁未解锁重新测试"
         "回忆涌现防御塔攻击力减半秒地狱模式额外Boss即将来袭获得奖励金币博弈胜利失败";
 
     int cpCount = 0;
@@ -554,6 +551,9 @@ void GameFrontend::run() {
             break;
         case Screen::AstiSummary:
             runAstiSummary();
+            break;
+        case Screen::LevelSelect:
+            runLevelSelect();
             break;
         case Screen::Game:
             runGame();
@@ -619,22 +619,72 @@ void GameFrontend::runQuestionnaire() {
 void GameFrontend::runAstiSummary() {
     if (IsKeyPressed(KEY_ENTER)) {
         audio.playClick();
-        initMap();
-        initPaths();
-        initWaves();
-        initEngine();  // 初始化玩家状态，从 PreGame 进入 Build
+        currentLevel = 1;
+        unlockedLevel = 1;
         selectedTowerIndex = -1;
         showExerciseGuide = false;
-        hoveredRow = -1;
-        hoveredCol = -1;
-        currentScreen = Screen::Game;
-        audio.startBGM();
+        chestManager.reset();
+        currentScreen = Screen::LevelSelect;
         return;
     }
 
     BeginDrawing();
     ClearBackground(Color{20, 20, 35, 255});
     drawAstiSummary(astiResult);
+    EndDrawing();
+}
+
+void GameFrontend::runLevelSelect() {
+    const int cardW = 190;
+    const int cardH = 170;
+    const int gap = 35;
+    const int totalW = cardW * 4 + gap * 3;
+    const int startX = SCREEN_WIDTH / 2 - totalW / 2;
+    const int cardY = 230;
+    const Rectangle retryRect{
+        SCREEN_WIDTH / 2.0f - 140.0f,
+        660.0f,
+        280.0f,
+        48.0f
+    };
+
+    Vector2 mouse = GetMousePosition();
+    int hoveredLevel = 0;
+    for (int i = 0; i < 4; ++i) {
+        Rectangle card{
+            static_cast<float>(startX + i * (cardW + gap)),
+            static_cast<float>(cardY),
+            static_cast<float>(cardW),
+            static_cast<float>(cardH)
+        };
+        if (CheckCollisionPointRec(mouse, card)) {
+            hoveredLevel = i + 1;
+            if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) && hoveredLevel <= unlockedLevel) {
+                audio.playClick();
+                startLevel(hoveredLevel);
+                return;
+            }
+        }
+    }
+
+    if (CheckCollisionPointRec(mouse, retryRect) && IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
+        audio.playClick();
+        questionnaire = buildAstiQuestionnaire();
+        answers.assign(questionnaire.getQuestions().size(), -1);
+        currentQuestion = 0;
+        currentLevel = 1;
+        unlockedLevel = 1;
+        selectedTowerIndex = -1;
+        showExerciseGuide = false;
+        engine = GameEngine();
+        chestManager.reset();
+        currentScreen = Screen::MainMenu;
+        return;
+    }
+
+    BeginDrawing();
+    ClearBackground(Color{20, 20, 35, 255});
+    drawLevelSelect(unlockedLevel, hoveredLevel);
     EndDrawing();
 }
 
@@ -898,6 +948,9 @@ void GameFrontend::updateGame(float dt) {
     if (phaseAfter == GamePhase::GameOver) {
         currentScreen = Screen::GameOver;
     } else if (phaseAfter == GamePhase::Victory) {
+        if (currentLevel < 4) {
+            unlockedLevel = std::max(unlockedLevel, currentLevel + 1);
+        }
         currentScreen = Screen::Victory;
     }
 }
@@ -968,15 +1021,13 @@ void GameFrontend::renderGame() {
                 // Retry current level
                 retryCurrentLevel();
             } else {
-                // Return to main menu
+                // Return to level select without redoing the ASTI test.
                 initMap();
-                questionnaire = buildAstiQuestionnaire();
-                answers.assign(questionnaire.getQuestions().size(), -1);
-                currentQuestion = 0;
                 selectedTowerIndex = -1;
                 showExerciseGuide = false;
                 engine = GameEngine();
-                currentScreen = Screen::MainMenu;
+                chestManager.reset();
+                currentScreen = Screen::LevelSelect;
             }
             gameOverMenuSelection = 0;
         }
@@ -996,15 +1047,13 @@ void GameFrontend::renderGame() {
                 // Continue to next level
                 goToNextLevel();
             } else {
-                // Return to main menu
+                // Return to level select without redoing the ASTI test.
                 initMap();
-                questionnaire = buildAstiQuestionnaire();
-                answers.assign(questionnaire.getQuestions().size(), -1);
-                currentQuestion = 0;
                 selectedTowerIndex = -1;
                 showExerciseGuide = false;
                 engine = GameEngine();
-                currentScreen = Screen::MainMenu;
+                chestManager.reset();
+                currentScreen = Screen::LevelSelect;
             }
             victoryMenuSelection = 0;
         }

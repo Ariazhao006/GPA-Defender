@@ -13,7 +13,7 @@
 
 namespace frontend {
 
-enum class Screen { MainMenu, Questionnaire, AstiSummary, Game, GameOver, Victory };
+enum class Screen { MainMenu, Questionnaire, AstiSummary, LevelSelect, Game, GameOver, Victory };
 
 class GameFrontend {
 public:
@@ -44,6 +44,7 @@ private:
     GamePhase prevPhase = GamePhase::PreGame;
 
     int currentLevel = 1;           // 1-4 对应大一到大四
+    int unlockedLevel = 1;
     int gameOverMenuSelection = 0;  // 0 = 重试本关, 1 = 返回主菜单
     int victoryMenuSelection = 0;   // 0 = 进入下一关/返回主菜单, 1 = 返回主菜单
 
@@ -63,10 +64,12 @@ private:
 
     void retryCurrentLevel();
     void goToNextLevel();
+    void startLevel(int level);
 
     void runMainMenu();
     void runQuestionnaire();
     void runAstiSummary();
+    void runLevelSelect();
     void runGame();
 
     void handleBuildInput();

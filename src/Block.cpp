@@ -40,7 +40,7 @@ void Block::buildBlocks(const std::vector<std::vector<int>>& numericMap) {
             grid[r][c] = cell;
         }
     }
-    std::cout << "[Block] 成功构建物理网格区块，总计: " << totalRows * totalCols << " 格。\n";
+    std::cout << "[Block] Built grid with " << totalRows * totalCols << " cells.\n";
 }
 
 bool Block::worldToGrid(float worldX, float worldY, int& outRow, int& outCol) const {
@@ -98,7 +98,7 @@ bool Block::placeObstacleAt(int row, int col) {
     if (canPlaceObstacle(row, col)) {
         grid[row][col].hasObstacle = true;
         grid[row][col].isWalkable = false; // 放置障碍物立刻封锁路径
-        std::cout << "[Block] 坐标 (" << row << "," << col << ") 已部署障碍物，路径已封锁。\n";
+        std::cout << "[Block] Obstacle placed at (" << row << "," << col << "). Path blocked.\n";
         return true;
     }
     return false;
