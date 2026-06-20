@@ -39,25 +39,24 @@ void Enemy::update(float deltaTime, PlayerStats* player) {
             currentWaypointIndex++;
 
             if (currentWaypointIndex >= waypoints.size()) {
-                // ע�����ĩβ����Ӣ�Ŀո��̾�ţ���ֹ C2001 ����
-                std::cout << std::endl << "[����] " << name << " �����С�������! " << std::endl;
+                std::cout << std::endl << "[Enemy] " << name << " reached the base." << std::endl;
 
                 if (player != nullptr) {
                     if (dmgAcademic > 0) {
                         player->changeAcademic(-dmgAcademic);
-                        std::cout << "  -> ѧҵ�ɼ��ܴ�: -" << dmgAcademic << std::endl;
+                        std::cout << "  -> Academic -" << dmgAcademic << std::endl;
                     }
                     if (dmgMental > 0) {
                         player->changeMental(-dmgMental);
-                        std::cout << "  -> ���������ܻ�: -" << dmgMental << std::endl;
+                        std::cout << "  -> Mental -" << dmgMental << std::endl;
                     }
                     if (dmgConnection > 0) {
                         player->changeConnection(-dmgConnection);
-                        std::cout << "  -> ������½�: -" << dmgConnection << std::endl;
+                        std::cout << "  -> Connection -" << dmgConnection << std::endl;
                     }
                     if (dmgPhysical > 0) {
                         player->changePhysical(-dmgPhysical);
-                        std::cout << "  -> ���彡��͸֧: -" << dmgPhysical << std::endl;
+                        std::cout << "  -> Physical -" << dmgPhysical << std::endl;
                     }
                 }
                 state = EnemyState::DEAD;
@@ -82,8 +81,7 @@ int Enemy::takeDamage(int damage) {
     if (currentHp <= 0) {
         currentHp = 0;
         state = EnemyState::DEAD;
-        // ע�����ͬ������Ӣ�ı��Ϳո�
-        std::cout << "[ս��] �ɹ����� " << name << " ! ��û��� +" << dropGold << std::endl;
+        std::cout << "[Combat] Defeated " << name << ". Gold +" << dropGold << std::endl;
         return dropGold;
     }
     return 0;
@@ -100,18 +98,18 @@ float Enemy::getEffectiveMoveSpeed() const {
     return speed * slowMultiplier;
 }
 
-SubjectEnemy::SubjectEnemy() : Enemy("��΢����I��", 120, 100.0f, 20) {
+SubjectEnemy::SubjectEnemy() : Enemy("Calculus I", 120, 100.0f, 20) {
     dmgAcademic = 25;
 }
 void SubjectEnemy::draw() {}
 
-ResearchEnemy::ResearchEnemy() : Enemy("������ĩ����ҵ", 450, 40.0f, 50) {
+ResearchEnemy::ResearchEnemy() : Enemy("Research Project", 450, 40.0f, 50) {
     dmgAcademic = 15;
     dmgMental = 20;
 }
 void ResearchEnemy::draw() {}
 
-SocialEnemy::SocialEnemy() : Enemy("���Ѷ�û������", 80, 160.0f, 15) {
+SocialEnemy::SocialEnemy() : Enemy("Busy Friends", 80, 160.0f, 15) {
     dmgConnection = 30;
     dmgMental = 10;
 }
@@ -119,7 +117,7 @@ void SocialEnemy::draw() {}
 // --- ���׻����������ʵ�� ---
 
 // ����ˡ������Ӽ���Ч��
-MorningClassEnemy::MorningClassEnemy() : Enemy("���ϰ˵�����.", 90, 180.0f, 15) {
+MorningClassEnemy::MorningClassEnemy() : Enemy("Morning Class", 90, 180.0f, 15) {
     dmgPhysical = 20;
     dmgMental = 15;
 }
@@ -129,7 +127,7 @@ void MorningClassEnemy::applySlowEffect(float speedMultiplier, float durationSec
 void MorningClassEnemy::draw() {}
 
 // �����п��� Boss�������׶ο񱩻���
-MidtermBossEnemy::MidtermBossEnemy() : Enemy("�����п��Դ�ħ����.", 800, 50.0f, 150) {
+MidtermBossEnemy::MidtermBossEnemy() : Enemy("Midterm Boss", 800, 50.0f, 150) {
     dmgAcademic = 50;
     dmgMental = 30;
     isEnraged = false;
@@ -145,15 +143,13 @@ int MidtermBossEnemy::takeDamage(int damage) {
         speed *= 2.5f;           // ���ٱ���2.5��
         slowMultiplier = 1.0f;   // ˲���أ�������м���
         slowTimeLeft = 0.0f;
-        // ���ܣ�ĩβ��Ӣ�ľ��
-        std::cout << "[Boss ����] ���п��Խ����ˡ���̸�ϰ�׶Ρ�! ���ٱ���! ." << std::endl;
+        std::cout << "[Boss] Midterm Boss enraged. Speed increased." << std::endl;
     }
 
     if (currentHp <= 0) {
         currentHp = 0;
         state = EnemyState::DEAD;
-        // ���ܣ�ð�Ż���
-        std::cout << "[ս��] �漣��ع�����: " << name << " ! ��ý�ѧ��: +" << dropGold << std::endl;
+        std::cout << "[Combat] Defeated boss: " << name << ". Gold +" << dropGold << std::endl;
         return dropGold;
     }
     return 0;
@@ -165,7 +161,7 @@ void MidtermBossEnemy::update(float deltaTime, PlayerStats* player) {
 void MidtermBossEnemy::draw() {}
 
 // ��С����ҵ�������׼��˻���
-GroupProjectEnemy::GroupProjectEnemy() : Enemy("С����ҵ����������.", 300, 60.0f, 80) {
+GroupProjectEnemy::GroupProjectEnemy() : Enemy("Group Project", 300, 60.0f, 80) {
     dmgConnection = 40;
     dmgMental = 40;
     armor = 8;          // ÿ�α�����ǿ�ƿۼ� 8 ���˺�
@@ -182,8 +178,7 @@ int GroupProjectEnemy::takeDamage(int damage) {
     if (currentHp <= 0) {
         currentHp = 0;
         state = EnemyState::DEAD;
-        // ���ܣ�ð�Ż��壬���׽�� 157 �е� C2001 ����
-        std::cout << "[ս��] �ɹ�������: " << name << " ! ��û���: +" << dropGold << std::endl;
+        std::cout << "[Combat] Defeated armored enemy: " << name << ". Gold +" << dropGold << std::endl;
         return dropGold;
     }
     return 0;
@@ -193,7 +188,7 @@ void GroupProjectEnemy::draw() {}
 #include <cstdlib> // ���� rand() ����
 
 // ������Ƶ�ڶ�������������
-ShortVideoEnemy::ShortVideoEnemy() : Enemy("ˢ����Ķ���Ƶ�ڶ�.", 250, 70.0f, 30) {
+ShortVideoEnemy::ShortVideoEnemy() : Enemy("Short Video Loop", 250, 70.0f, 30) {
     dmgAcademic = 15;
     dmgPhysical = 20;   // ��ҹˢ��Ƶ������
     regenTimer = 0.0f;
@@ -214,7 +209,7 @@ void ShortVideoEnemy::update(float deltaTime, PlayerStats* player) {
 void ShortVideoEnemy::draw() {}
 
 // ��Ѧ���̵Ŀ��١������ܻ���
-ExamSyllabusEnemy::ExamSyllabusEnemy() : Enemy("Ѧ���̵���ĩ����.", 150, 90.0f, 40) {
+ExamSyllabusEnemy::ExamSyllabusEnemy() : Enemy("Unclear Syllabus", 150, 90.0f, 40) {
     dmgAcademic = 35; // û��ϰ��ֱ�ӱ�ը
     dmgMental = 20;
     dodgeChance = 30; // 30% ��������
@@ -224,7 +219,7 @@ int ExamSyllabusEnemy::takeDamage(int damage) {
 
     // �����ж�
     if (std::rand() % 100 < dodgeChance) {
-        std::cout << "[����] " << name << " ����������! �ɹ��ܿ��˸�ϰ��Χ! ." << std::endl;
+        std::cout << "[Dodge] " << name << " avoided the hit." << std::endl;
         return 0; // �ܵ� 0 �˺�
     }
 
@@ -234,7 +229,7 @@ int ExamSyllabusEnemy::takeDamage(int damage) {
 void ExamSyllabusEnemy::draw() {}
 
 // ��ͬ��ѹ���������Ǽ��ٻ���
-PeerPressureEnemy::PeerPressureEnemy() : Enemy("�޴����ڵ�ͬ��ѹ��(�ھ�).", 200, 50.0f, 50) {
+PeerPressureEnemy::PeerPressureEnemy() : Enemy("Peer Pressure", 200, 50.0f, 50) {
     dmgMental = 50; // ���ȴ����������
     dmgConnection = 20; // �ƻ�ͬѧ��ϵ
     timeAlive = 0.0f;

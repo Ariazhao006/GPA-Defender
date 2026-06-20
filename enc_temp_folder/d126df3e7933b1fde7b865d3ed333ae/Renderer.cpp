@@ -536,7 +536,7 @@ void drawGameOver(int selection) {
     int tw = measureTextF(msg, 52);
     drawTextF(msg, SCREEN_WIDTH / 2 - tw / 2, 260, 52, Color{220, 60, 60, 255});
 
-    const char* hint = "Your Score has fallen below threshold...";
+    const char* hint = "Your GPA has fallen below threshold...";
     tw = measureTextF(hint, 18);
     drawTextF(hint, SCREEN_WIDTH / 2 - tw / 2, 340, 18, LIGHTGRAY);
 
