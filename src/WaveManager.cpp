@@ -1,4 +1,4 @@
-#include "gpa_defender/WaveManager.h"
+﻿#include "gpa_defender/WaveManager.h"
 
 #include <algorithm>
 

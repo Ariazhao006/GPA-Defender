@@ -1,4 +1,4 @@
-///
+﻿///
 /// GameUI.h - Simple text-based UI for testing and demonstration
 ///
 #pragma once

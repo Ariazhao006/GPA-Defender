@@ -1,4 +1,4 @@
-# GPA Defender
+﻿# GPA Defender
 
 GPA Defender 是一个 C++17 塔防原型项目。当前仓库以 CMake 作为标准构建入口，并把核心逻辑、可执行入口、测试、文档和脚本拆分到了各自目录，方便继续开发和接入工具链。
 

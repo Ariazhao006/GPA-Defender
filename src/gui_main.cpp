@@ -1,4 +1,4 @@
-#include "frontend/GameFrontend.h"
+﻿#include "frontend/GameFrontend.h"
 
 int main() {
     frontend::GameFrontend frontend;

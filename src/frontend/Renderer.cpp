@@ -1,4 +1,4 @@
-#include "frontend/Renderer.h"
+﻿#include "frontend/Renderer.h"
 
 #include "gpa_defender/PlayerStats.h"
 #include "raylib.h"
@@ -428,10 +428,8 @@ void drawUI(const GameSnapshot& snap, int gold, TowerKind selectedTower,
 
         TowerKind kinds[] = {TowerKind::Coffee, TowerKind::AI, TowerKind::Library,
                             TowerKind::Class, TowerKind::Bilibili};
-        const char* tnames[] = {"Coffee", "AI", "Library", "Class", "Bilibili"};
-        int costs[] = {50, 100, 120, 80, 65};
-
         for (int i = 0; i < 5; ++i) {
+            const TowerSpec spec = GameEngine::towerSpec(kinds[i]);
             Rectangle btn = {static_cast<float>(lx), static_cast<float>(y),
                              static_cast<float>(w - 30), 26.0f};
             bool hover = CheckCollisionPointRec(GetMousePosition(), btn);
@@ -441,10 +439,10 @@ void drawUI(const GameSnapshot& snap, int gold, TowerKind selectedTower,
             DrawRectangleRec(btn, bg);
             DrawRectangleLinesEx(btn, 1, sel ? WHITE : Color{80, 80, 100, 200});
 
-            Color tc = towerColor(tnames[i]);
+            Color tc = towerColor(spec.name);
             DrawCircle(lx + 14, y + 13, 6, tc);
-            std::string towerLabel = std::string(tnames[i]) + "  " + std::to_string(costs[i]) + "g";
-            drawTextF(towerLabel.c_str(), lx + 26, y + 4, 16, (gold >= costs[i]) ? tc : GRAY);
+            std::string towerLabel = std::string(spec.name) + "  " + std::to_string(spec.cost) + "g";
+            drawTextF(towerLabel.c_str(), lx + 26, y + 4, 16, (gold >= spec.cost) ? tc : GRAY);
 
             y += 30;
         }

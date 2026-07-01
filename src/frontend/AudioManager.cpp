@@ -1,4 +1,4 @@
-#include "frontend/AudioManager.h"
+﻿#include "frontend/AudioManager.h"
 
 #include <cmath>
 #include <cstdlib>

@@ -1,48 +1,39 @@
-#pragma once
-// ========================================
-// File: Enemy.h
-// ========================================
-#pragma once
+﻿#pragma once
 #ifndef ENEMY_H
 #define ENEMY_H
 
-#include <vector>
 #include <string>
-#include "gpa_defender/Vector2D.h"
-#include "gpa_defender/PlayerStats.h" // ����С���ָ����
+#include <vector>
 
-// �з�״̬����ȥ����Arknights��ATTACKING�赲״̬����Ϊ��������ת
+#include "gpa_defender/PlayerStats.h"
+#include "gpa_defender/Vector2D.h"
+
 enum class EnemyState {
-    MOVING,     // �о�״̬�����ڵ�Ѱ·��
-    DEAD        // ����״̬�������ܻ��ѵ����յ�۳�ָ�꣩
+    MOVING,
+    DEAD
 };
 
-/**
- * @class Enemy
- * @brief �з���Ӫ��������
- */
 class Enemy {
 protected:
-    std::string name;       // �������� (�磺΢���֡����д���ҵ)
-    int maxHp;              // �������ֵ
-    int currentHp;          // ��ǰ����ֵ
-    float speed;            // �ƶ��ٶ�
-    int dropGold;           // ���ܺ��õĽ��
+    std::string name;
+    int maxHp;
+    int currentHp;
+    float speed;
+    int dropGold;
 
-    // ��С�����ָ����ɵ��˺�ֵ
     int dmgAcademic = 0;
     int dmgMental = 0;
     int dmgConnection = 0;
     int dmgPhysical = 0;
 
-    EnemyState state;       // ��ǰ״̬
-    Vector2D position;      // ��ǰ��������
-    Rect boundingBox;       // ������ײ��
+    EnemyState state;
+    Vector2D position;
+    Rect boundingBox;
 
     std::vector<Vector2D> waypoints;
     int currentWaypointIndex;
 
-    float slowMultiplier;   // ͼ��ݼ��ٱ���
+    float slowMultiplier;
     float slowTimeLeft;
 
 public:
@@ -51,12 +42,8 @@ public:
 
     void setPath(const std::vector<Vector2D>& path);
 
-    // �����߼������� PlayerStats ʹ�ù��ﵽ���յ�ʱ����ֱ�ӿ۳�ָ��
     virtual void update(float deltaTime, PlayerStats* player);
-
-    // �ܵ��������˺������ػ�ɱ����Ľ�ң�û���򷵻�0��
     virtual int takeDamage(int damage);
-
     virtual void applySlowEffect(float speedMultiplier, float durationSeconds);
     virtual void draw() = 0;
 
@@ -69,89 +56,89 @@ public:
     float getEffectiveMoveSpeed() const;
 };
 
-// --- ������ɫ������ ---
-
-// 1. ѧ�ƹ��ޣ���΢���֡��ߴ�... -> ר��ѧҵ�ɼ�
+// Subject: basic learning burden
 class SubjectEnemy : public Enemy {
 public:
     SubjectEnemy();
     void draw() override;
 };
 
-// 2. ���д���ҵ���� -> ��������������ѧҵ�ɼ�
+// Research: research assignments
 class ResearchEnemy : public Enemy {
 public:
     ResearchEnemy();
     void draw() override;
 };
 
-// 3. �罻Issue���� (���Ѷ���æ/��ѹ��) -> ��������С���������
+// Social: social issues
 class SocialEnemy : public Enemy {
 public:
     SocialEnemy();
     void draw() override;
 };
 
-#endif // ENEMY_H
-// 4. ��˹��ޣ����ټ��죬�ҡ����߼��١�������ͼ��ݣ�
+// MorningClass: early morning lectures, resists slow.
 class MorningClassEnemy : public Enemy {
 public:
     MorningClassEnemy();
-    // ��д���ٺ�����ʹ����Ч��
-    void applySlowEffect(float speedMultiplier, float durationSeconds);
+    void applySlowEffect(float speedMultiplier, float durationSeconds) override;
     void draw() override;
 };
 
-// 5. ���п��� Boss��˫�׶�״̬����Ѫ������50%ʱ�������񱩳�̡�
+// MidtermBoss: dual-phase boss.
 class MidtermBossEnemy : public Enemy {
 private:
-    bool isEnraged; // �Ƿ��ڿ񱩣����׶Σ�״̬
+    bool isEnraged;
+
 public:
     MidtermBossEnemy();
-    // ��д�ܵ��˺����߼������ڼ��Ѫ�����л�״̬
     int takeDamage(int damage) override;
     void update(float deltaTime, PlayerStats* player) override;
     void draw() override;
 };
 
-// 6. С����ҵ��������ѣ����Դ���Ӳ��װ�ס����̶����ˣ���ר����������
+// GroupProject: armor-based damage reduction.
 class GroupProjectEnemy : public Enemy {
 private:
-    int armor; // ÿ���ܻ��̶�������˺�ֵ
+    int armor;
+
 public:
     GroupProjectEnemy();
-    // ��д�ܵ��˺����߼������뻤�׼���
     int takeDamage(int damage) override;
     void draw() override;
 };
-// ================= ����׷�ӵ� Enemy.h ����ĩβ =================
 
-// 7. ����Ƶ�ڶ���ӵ�С��������ϡ����ơ�������������ͻ᲻�ϻ�Ѫ
+// ShortVideo: regenerates health over time.
 class ShortVideoEnemy : public Enemy {
 private:
     float regenTimer;
+
 public:
     ShortVideoEnemy();
     void update(float deltaTime, PlayerStats* player) override;
     void draw() override;
 };
 
-// 8. Ѧ���̵Ŀ��٣�ӵ�С����ܡ����ơ��и�����ȫ���ӱ����˺�
+// ExamSyllabus: dodge chance.
 class ExamSyllabusEnemy : public Enemy {
 private:
-    int dodgeChance; // ���ܸ��ʰٷֱ� (0-100)
+    int dodgeChance;
+
 public:
     ExamSyllabusEnemy();
     int takeDamage(int damage) override;
     void draw() override;
 };
 
-// 9. ͬ��ѹ��/�ھ��籩��ӵ�С����Ǽ��١����ơ����ʱ��Խ�ã��ܵ�Խ��
+// PeerPressure: gets stronger over time.
 class PeerPressureEnemy : public Enemy {
 private:
     float timeAlive;
+
 public:
     PeerPressureEnemy();
     void update(float deltaTime, PlayerStats* player) override;
     void draw() override;
 };
+
+#endif // ENEMY_H

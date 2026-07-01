@@ -1,4 +1,4 @@
-#include "gpa_defender/Enemy.h"
+﻿#include "gpa_defender/Enemy.h"
 #include <iostream>
 
 Enemy::Enemy(std::string name, int hp, float spd, int gold)

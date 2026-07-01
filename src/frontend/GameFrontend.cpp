@@ -1,9 +1,10 @@
-#include "frontend/GameFrontend.h"
+﻿#include "frontend/GameFrontend.h"
 #include "frontend/Renderer.h"
 
 #include "gpa_defender/Block.h"
 #include "gpa_defender/DefenseTower.h"
 #include "gpa_defender/Enemy.h"
+#include "gpa_defender/LevelData.h"
 #include "gpa_defender/PlayerStats.h"
 #include "gpa_defender/WaveManager.h"
 
@@ -12,111 +13,20 @@
 #include <cstdio>
 #include <random>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace frontend {
 
-// 大一地图：单出怪点，简单路径
-const std::vector<std::vector<int>> GameFrontend::MAP_DATA = {
-    // 0  1  2  3  4  5  6  7  8  9 10 11
-    {  3, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2 },  // row 0
-    {  2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 2, 2 },  // row 1
-    {  2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 2, 2 },  // row 2
-    {  2, 2, 2, 1, 1, 1, 1, 1, 1, 2, 2, 2 },  // row 3
-    {  2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2 },  // row 4
-    {  2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2 },  // row 5
-    {  2, 2, 2, 1, 1, 1, 1, 1, 1, 2, 2, 2 },  // row 6
-    {  2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 2, 2 },  // row 7
-    {  2, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 4 },  // row 8
-    {  2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2 },  // row 9
-};
-
-// 大二地图：双出怪点，路径交叉
-const std::vector<std::vector<int>> GameFrontend::MAP_DATA_LEVEL2 = {
-    // 0  1  2  3  4  5  6  7  8  9 10 11
-    {  3, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2 },  // row 0
-    {  2, 2, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2 },  // row 1
-    {  2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 2 },  // row 2
-    {  2, 2, 2, 2, 1, 1, 1, 1, 2, 2, 2, 2 },  // row 3
-    {  2, 2, 2, 2, 2, 2, 2, 1, 1, 1, 2, 2 },  // row 4
-    {  2, 3, 1, 1, 1, 1, 2, 2, 2, 1, 2, 2 },  // row 5 - 第二个出怪点
-    {  2, 2, 2, 2, 2, 1, 1, 1, 2, 1, 2, 2 },  // row 6
-    {  2, 2, 2, 2, 2, 2, 2, 1, 1, 1, 2, 2 },  // row 7
-    {  2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 1, 4 },  // row 8
-    {  2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2 },  // row 9
-};
-
-// 大三地图：双路径，S型蜿蜒与直线路线
-const std::vector<std::vector<int>> GameFrontend::MAP_DATA_LEVEL3 = {
-    // 0  1  2  3  4  5  6  7  8  9 10 11
-    {  3, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2 },  // row 0
-    {  2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 2, 2 },  // row 1
-    {  2, 2, 2, 1, 1, 1, 1, 2, 2, 2, 2, 2 },  // row 2
-    {  2, 2, 2, 2, 2, 2, 1, 1, 1, 2, 2, 2 },  // row 3
-    {  2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2 },  // row 4
-    {  2, 2, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2 },  // row 5
-    {  2, 2, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2 },  // row 6
-    {  2, 2, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2 },  // row 7
-    {  2, 2, 2, 2, 2, 2, 2, 2, 1, 1, 1, 4 },  // row 8
-    {  2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2 },  // row 9
-};
-
-// 大四地图：双路径，螺旋型路线
-const std::vector<std::vector<int>> GameFrontend::MAP_DATA_LEVEL4 = {
-    // 0  1  2  3  4  5  6  7  8  9 10 11
-    {  3, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2 },  // row 0
-    {  2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 2, 2 },  // row 1
-    {  2, 2, 2, 1, 1, 1, 2, 2, 2, 2, 2, 2 },  // row 2
-    {  2, 2, 2, 2, 2, 1, 1, 1, 2, 2, 2, 2 },  // row 3
-    {  2, 2, 2, 2, 2, 2, 2, 1, 1, 1, 2, 2 },  // row 4
-    {  2, 2, 2, 1, 1, 1, 1, 1, 1, 1, 2, 2 },  // row 5 - (5,8)改为1
-    {  2, 2, 2, 1, 2, 2, 1, 1, 1, 1, 2, 2 },  // row 6
-    {  2, 2, 2, 1, 2, 2, 2, 2, 2, 1, 2, 2 },  // row 7
-    {  2, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 4 },  // row 8
-    {  2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2 },  // row 9
-};
-
 const char* GameFrontend::towerName(TowerKind kind) const {
-    switch (kind) {
-    case TowerKind::Coffee:   return "Coffee";
-    case TowerKind::AI:       return "AI";
-    case TowerKind::Library:  return "Library";
-    case TowerKind::Class:    return "Class";
-    case TowerKind::Bilibili: return "Bilibili";
-    }
-    return "???";
+    return GameEngine::towerSpec(kind).name;
 }
 
-int GameFrontend::towerCost(TowerKind kind) const {
-    switch (kind) {
-    case TowerKind::Coffee:   return 50;
-    case TowerKind::AI:       return 100;
-    case TowerKind::Library:  return 120;
-    case TowerKind::Class:    return 80;
-    case TowerKind::Bilibili: return 65;
-    }
-    return 0;
-}
+void GameFrontend::loadLevelDefinition(int level) {
+    currentLevel = clampLevelIndex(level);
+    const LevelDefinition& levelDef = getLevelDefinition(currentLevel);
 
-const char* GameFrontend::towerDesc(TowerKind kind) const {
-    switch (kind) {
-    case TowerKind::Coffee:   return "Small range, huge burst damage";
-    case TowerKind::AI:       return "360 sweep, hits all in range (upgradeable)";
-    case TowerKind::Library:  return "Slows enemies, no direct damage";
-    case TowerKind::Class:    return "Heavy single hit, long cooldown";
-    case TowerKind::Bilibili: return "Long-range beam, configurable direction";
-    }
-    return "";
-}
-
-void GameFrontend::initMap() {
-    switch (currentLevel) {
-    case 1: block.buildBlocks(MAP_DATA); break;
-    case 2: block.buildBlocks(MAP_DATA_LEVEL2); break;
-    case 3: block.buildBlocks(MAP_DATA_LEVEL3); break;
-    case 4: block.buildBlocks(MAP_DATA_LEVEL4); break;
-    default: block.buildBlocks(MAP_DATA); break;
-    }
+    block.buildBlocks(levelDef.map);
 
     highlandPositions.clear();
     const auto& grid = block.getGrid();
@@ -127,335 +37,23 @@ void GameFrontend::initMap() {
             }
         }
     }
-}
 
-void GameFrontend::initPaths() {
     wavePaths.clear();
-    switch (currentLevel) {
-    case 1:
-        // 大一：单路径
-        wavePaths = {{
-            block.getBlockCenter(0, 0),   // spawn
-            block.getBlockCenter(0, 3),   // turn down
-            block.getBlockCenter(3, 3),   // turn right
-            block.getBlockCenter(3, 8),   // turn down
-            block.getBlockCenter(6, 8),   // turn left
-            block.getBlockCenter(6, 3),   // turn down
-            block.getBlockCenter(8, 3),   // turn right
-            block.getBlockCenter(8, 11),  // base
-        }};
-        break;
-    case 2:
-        // 大二：双路径
-        wavePaths = {
-            {
-                block.getBlockCenter(0, 0),   // spawn1
-                block.getBlockCenter(0, 2),   // turn down
-                block.getBlockCenter(1, 2),   // turn right
-                block.getBlockCenter(1, 4),   // turn down
-                block.getBlockCenter(3, 4),   // turn right
-                block.getBlockCenter(3, 7),   // turn down
-                block.getBlockCenter(4, 7),   // turn right
-                block.getBlockCenter(4, 9),   // turn down
-                block.getBlockCenter(8, 9),   // turn right
-                block.getBlockCenter(8, 11),  // base
-            },
-            {
-                block.getBlockCenter(5, 1),   // spawn2
-                block.getBlockCenter(5, 5),   // turn right
-                block.getBlockCenter(6, 5),   // turn down
-                block.getBlockCenter(6, 7),   // turn right
-                block.getBlockCenter(7, 7),   // turn down
-                block.getBlockCenter(7, 9),   // turn right
-                block.getBlockCenter(8, 9),   // turn down
-                block.getBlockCenter(8, 11),  // base
-            }
-        };
-        break;
-    case 3:
-        // 大三：双路径同起点，确保怪物只走Path格子
-        wavePaths = {
-            {
-                block.getBlockCenter(0, 0),   // spawn
-                block.getBlockCenter(0, 3),   // right to col 3
-                block.getBlockCenter(1, 3),   // down to row 1
-                block.getBlockCenter(2, 3),   // down to row 2
-                block.getBlockCenter(2, 6),   // right to col 6
-                block.getBlockCenter(3, 6),   // down to row 3
-                block.getBlockCenter(3, 7),   // right to col 7
-                block.getBlockCenter(3, 8),   // right to col 8
-                block.getBlockCenter(4, 8),   // down to row 4
-                block.getBlockCenter(5, 8),   // down to row 5
-                block.getBlockCenter(5, 7),   // left to col 7
-                block.getBlockCenter(5, 6),   // left to col 6
-                block.getBlockCenter(5, 5),   // left to col 5
-                block.getBlockCenter(5, 4),   // left to col 4
-                block.getBlockCenter(5, 3),   // left to col 3
-                block.getBlockCenter(5, 2),   // left to col 2
-                block.getBlockCenter(6, 2),   // down to row 6
-                block.getBlockCenter(7, 2),   // down to row 7
-                block.getBlockCenter(7, 3),   // right to col 3
-                block.getBlockCenter(7, 4),   // right to col 4
-                block.getBlockCenter(7, 5),   // right to col 5
-                block.getBlockCenter(7, 6),   // right to col 6
-                block.getBlockCenter(7, 7),   // right to col 7
-                block.getBlockCenter(7, 8),   // right to col 8
-                block.getBlockCenter(8, 8),   // down to row 8
-                block.getBlockCenter(8, 9),   // right to col 9
-                block.getBlockCenter(8, 10),  // right to col 10
-                block.getBlockCenter(8, 11),  // base
-            },
-            {
-                block.getBlockCenter(0, 0),   // spawn (同一起点)
-                block.getBlockCenter(0, 3),   // right to col 3
-                block.getBlockCenter(1, 3),   // down to row 1
-                block.getBlockCenter(2, 3),   // down to row 2
-                block.getBlockCenter(2, 4),   // right to col 4
-                block.getBlockCenter(2, 5),   // right to col 5
-                block.getBlockCenter(2, 6),   // right to col 6
-                block.getBlockCenter(3, 6),   // down to row 3
-                block.getBlockCenter(3, 7),   // right to col 7
-                block.getBlockCenter(3, 8),   // right to col 8
-                block.getBlockCenter(4, 8),   // down to row 4
-                block.getBlockCenter(5, 8),   // down to row 5
-                block.getBlockCenter(5, 7),   // left to col 7
-                block.getBlockCenter(5, 6),   // left to col 6
-                block.getBlockCenter(5, 5),   // left to col 5
-                block.getBlockCenter(5, 4),   // left to col 4
-                block.getBlockCenter(5, 3),   // left to col 3
-                block.getBlockCenter(5, 2),   // left to col 2
-                block.getBlockCenter(6, 2),   // down to row 6
-                block.getBlockCenter(7, 2),   // down to row 7
-                block.getBlockCenter(7, 3),   // right to col 3
-                block.getBlockCenter(7, 4),   // right to col 4
-                block.getBlockCenter(7, 5),   // right to col 5
-                block.getBlockCenter(7, 6),   // right to col 6
-                block.getBlockCenter(7, 7),   // right to col 7
-                block.getBlockCenter(7, 8),   // right to col 8
-                block.getBlockCenter(8, 8),   // down to row 8
-                block.getBlockCenter(8, 9),   // right to col 9
-                block.getBlockCenter(8, 10),  // right to col 10
-                block.getBlockCenter(8, 11),  // base
-            }
-        };
-        break;
-    case 4:
-        // 大四：双路径同起点，每步只移动一格
-        wavePaths = {
-            {
-                block.getBlockCenter(0, 0),   // spawn
-                block.getBlockCenter(0, 1),   // right
-                block.getBlockCenter(0, 2),   // right
-                block.getBlockCenter(0, 3),   // right
-                block.getBlockCenter(1, 3),   // down
-                block.getBlockCenter(2, 3),   // down
-                block.getBlockCenter(2, 4),   // right
-                block.getBlockCenter(2, 5),   // right
-                block.getBlockCenter(3, 5),   // down
-                block.getBlockCenter(3, 6),   // right
-                block.getBlockCenter(3, 7),   // right
-                block.getBlockCenter(4, 7),   // down
-                block.getBlockCenter(4, 8),   // right
-                block.getBlockCenter(4, 9),   // right
-                block.getBlockCenter(5, 9),   // down
-                block.getBlockCenter(5, 8),   // left
-                block.getBlockCenter(5, 7),   // left
-                block.getBlockCenter(5, 6),   // left
-                block.getBlockCenter(5, 5),   // left
-                block.getBlockCenter(5, 4),   // left
-                block.getBlockCenter(5, 3),   // left
-                block.getBlockCenter(6, 3),   // down
-                block.getBlockCenter(7, 3),   // down
-                block.getBlockCenter(7, 4),   // right
-                block.getBlockCenter(7, 5),   // right
-                block.getBlockCenter(7, 6),   // right
-                block.getBlockCenter(7, 7),   // right
-                block.getBlockCenter(7, 8),   // right
-                block.getBlockCenter(7, 9),   // right
-                block.getBlockCenter(8, 9),   // down
-                block.getBlockCenter(8, 10),  // right
-                block.getBlockCenter(8, 11),  // base
-            },
-            {
-                block.getBlockCenter(0, 0),   // spawn (同一起点)
-                block.getBlockCenter(0, 1),   // right
-                block.getBlockCenter(0, 2),   // right
-                block.getBlockCenter(0, 3),   // right
-                block.getBlockCenter(1, 3),   // down
-                block.getBlockCenter(2, 3),   // down
-                block.getBlockCenter(2, 4),   // right
-                block.getBlockCenter(2, 5),   // right
-                block.getBlockCenter(3, 5),   // down
-                block.getBlockCenter(3, 6),   // right
-                block.getBlockCenter(3, 7),   // right
-                block.getBlockCenter(4, 7),   // down
-                block.getBlockCenter(4, 8),   // right
-                block.getBlockCenter(4, 9),   // right
-                block.getBlockCenter(5, 9),   // down
-                block.getBlockCenter(5, 8),   // left
-                block.getBlockCenter(5, 7),   // left
-                block.getBlockCenter(5, 6),   // left
-                block.getBlockCenter(6, 6),   // down
-                block.getBlockCenter(6, 7),   // right
-                block.getBlockCenter(6, 8),   // right
-                block.getBlockCenter(6, 9),   // right
-                block.getBlockCenter(7, 9),   // down
-                block.getBlockCenter(8, 9),   // down
-                block.getBlockCenter(8, 10),  // right
-                block.getBlockCenter(8, 11),  // base
-            }
-        };
-        break;
-    default:
-        wavePaths = {{
-            block.getBlockCenter(0, 0),
-            block.getBlockCenter(8, 11),
-        }};
-        break;
-    }
-}
-
-void GameFrontend::initWaves() {
-    initWavesForLevel(currentLevel);
-}
-
-void GameFrontend::initWavesForLevel(int level) {
-    std::vector<WaveDefinition> waves;
-
-    if (level == 1) {
-        // 大一: 基础入门，简单敌人
-        WaveDefinition w0;
-        w0.spawns = {
-            {0.0f, EnemyKind::Subject, 0},
-            {3.0f, EnemyKind::Subject, 0},
-            {6.0f, EnemyKind::Social, 0},
-        };
-        w0.clearBonus = 50;
-
-        WaveDefinition w1;
-        w1.spawns = {
-            {0.0f, EnemyKind::Subject, 0},
-            {2.0f, EnemyKind::Subject, 0},
-            {5.0f, EnemyKind::Social, 0},
-            {8.0f, EnemyKind::MorningClass, 0},
-        };
-        w1.clearBonus = 80;
-
-        WaveDefinition w2;
-        w2.spawns = {
-            {0.0f, EnemyKind::Subject, 0},
-            {2.0f, EnemyKind::MorningClass, 0},
-            {5.0f, EnemyKind::Social, 0},
-            {8.0f, EnemyKind::MidtermBoss, 0},
-        };
-        w2.clearBonus = 150;
-
-        waves = {w0, w1, w2};
-    } else if (level == 2) {
-        // 大二: 双路径，加入 Research
-        WaveDefinition w0;
-        w0.spawns = {
-            {0.0f, EnemyKind::Subject, 0},
-            {2.0f, EnemyKind::MorningClass, 1},
-            {5.0f, EnemyKind::Social, 0},
-            {8.0f, EnemyKind::Research, 1},
-        };
-        w0.clearBonus = 60;
-
-        WaveDefinition w1;
-        w1.spawns = {
-            {0.0f, EnemyKind::Subject, 1},
-            {2.0f, EnemyKind::Research, 0},
-            {5.0f, EnemyKind::MorningClass, 1},
-            {8.0f, EnemyKind::ShortVideo, 0},
-        };
-        w1.clearBonus = 90;
-
-        WaveDefinition w2;
-        w2.spawns = {
-            {0.0f, EnemyKind::Research, 0},
-            {2.0f, EnemyKind::GroupProject, 1},
-            {5.0f, EnemyKind::PeerPressure, 0},
-            {8.0f, EnemyKind::MidtermBoss, 1},
-        };
-        w2.clearBonus = 170;
-
-        waves = {w0, w1, w2};
-    } else if (level == 3) {
-        // 大三: 双路径，敌人更强
-        WaveDefinition w0;
-        w0.spawns = {
-            {0.0f, EnemyKind::Subject, 0},
-            {2.0f, EnemyKind::Research, 1},
-            {5.0f, EnemyKind::GroupProject, 0},
-            {8.0f, EnemyKind::MorningClass, 1},
-        };
-        w0.clearBonus = 70;
-
-        WaveDefinition w1;
-        w1.spawns = {
-            {0.0f, EnemyKind::ExamSyllabus, 1},
-            {2.0f, EnemyKind::PeerPressure, 0},
-            {5.0f, EnemyKind::Research, 1},
-            {8.0f, EnemyKind::Social, 0},
-        };
-        w1.clearBonus = 100;
-
-        WaveDefinition w2;
-        w2.spawns = {
-            {0.0f, EnemyKind::GroupProject, 0},
-            {2.0f, EnemyKind::ExamSyllabus, 1},
-            {5.0f, EnemyKind::PeerPressure, 0},
-            {8.0f, EnemyKind::MidtermBoss, 1},
-        };
-        w2.clearBonus = 190;
-
-        waves = {w0, w1, w2};
-    } else {
-        // 大四: 双路径，全部敌人类型，数量略增
-        WaveDefinition w0;
-        w0.spawns = {
-            {0.0f, EnemyKind::Subject, 0},
-            {1.5f, EnemyKind::Subject, 1},
-            {3.0f, EnemyKind::Research, 0},
-            {5.0f, EnemyKind::Social, 1},
-            {7.0f, EnemyKind::MorningClass, 0},
-        };
-        w0.clearBonus = 80;
-
-        WaveDefinition w1;
-        w1.spawns = {
-            {0.0f, EnemyKind::GroupProject, 1},
-            {2.0f, EnemyKind::ExamSyllabus, 0},
-            {4.0f, EnemyKind::PeerPressure, 1},
-            {6.0f, EnemyKind::ShortVideo, 0},
-            {8.0f, EnemyKind::Research, 1},
-        };
-        w1.clearBonus = 110;
-
-        WaveDefinition w2;
-        w2.spawns = {
-            {0.0f, EnemyKind::MidtermBoss, 0},
-            {2.0f, EnemyKind::GroupProject, 1},
-            {4.0f, EnemyKind::ExamSyllabus, 0},
-            {6.0f, EnemyKind::PeerPressure, 1},
-            {8.0f, EnemyKind::MidtermBoss, 0},
-        };
-        w2.clearBonus = 210;
-
-        waves = {w0, w1, w2};
+    wavePaths.reserve(levelDef.pathTiles.size());
+    for (const auto& path : levelDef.pathTiles) {
+        std::vector<Vector2D> worldPath;
+        worldPath.reserve(path.size());
+        for (const GridCoord& tile : path) {
+            worldPath.push_back(block.getBlockCenter(tile.row, tile.col));
+        }
+        wavePaths.push_back(std::move(worldPath));
     }
 
-    int startingGold = 300 + (level - 1) * 150;  // 大一300, 大二450, 大三600, 大四750
-    engine = GameEngine(waves, wavePaths, startingGold);
+    engine = GameEngine(levelDef.waves, wavePaths, levelDef.startingGold);
 }
 
 void GameFrontend::startLevel(int level) {
-    currentLevel = std::clamp(level, 1, 4);
-    initMap();
-    initPaths();
-    initWavesForLevel(currentLevel);
-    engine.setPaths(wavePaths);
+    loadLevelDefinition(level);
     engine.initializeFromAsti(astiResult);
     chestManager.reset();
     selectedTowerIndex = -1;
@@ -473,7 +71,7 @@ void GameFrontend::retryCurrentLevel() {
 }
 
 void GameFrontend::goToNextLevel() {
-    if (currentLevel < 4) {
+    if (currentLevel < maxLevelCount()) {
         unlockedLevel = std::max(unlockedLevel, currentLevel + 1);
         startLevel(currentLevel + 1);
     }
@@ -536,8 +134,7 @@ void GameFrontend::run() {
     SetTextureFilter(uiFont.texture, TEXTURE_FILTER_TRILINEAR);
     setUiFont(uiFont);
 
-    initMap();
-    initPaths();
+    loadLevelDefinition(currentLevel);
     answers.resize(questionnaire.getQuestions().size(), -1);
 
     while (!WindowShouldClose()) {
@@ -948,7 +545,7 @@ void GameFrontend::updateGame(float dt) {
     if (phaseAfter == GamePhase::GameOver) {
         currentScreen = Screen::GameOver;
     } else if (phaseAfter == GamePhase::Victory) {
-        if (currentLevel < 4) {
+        if (currentLevel < maxLevelCount()) {
             unlockedLevel = std::max(unlockedLevel, currentLevel + 1);
         }
         currentScreen = Screen::Victory;
@@ -973,17 +570,10 @@ void GameFrontend::renderGame() {
                           TILE_SIZE - 4, TILE_SIZE - 4,
                           Color{prevColor.r, prevColor.g, prevColor.b, 80});
 
-            // Show range for hovered placement
-            if (selectedTowerKind == TowerKind::Coffee)
-                DrawCircleLines(static_cast<int>(center.x), static_cast<int>(center.y), 92, Color{255,255,255,60});
-            else if (selectedTowerKind == TowerKind::AI)
-                DrawCircleLines(static_cast<int>(center.x), static_cast<int>(center.y), 205, Color{255,255,255,60});
-            else if (selectedTowerKind == TowerKind::Library)
-                DrawCircleLines(static_cast<int>(center.x), static_cast<int>(center.y), 228, Color{255,255,255,60});
-            else if (selectedTowerKind == TowerKind::Class)
-                DrawCircleLines(static_cast<int>(center.x), static_cast<int>(center.y), 172, Color{255,255,255,60});
-            else if (selectedTowerKind == TowerKind::Bilibili) {
-                DrawCircleLines(static_cast<int>(center.x), static_cast<int>(center.y), 305, Color{255,255,255,60});
+            const TowerSpec spec = GameEngine::towerSpec(selectedTowerKind);
+            DrawCircleLines(static_cast<int>(center.x), static_cast<int>(center.y),
+                            spec.range, Color{255,255,255,60});
+            if (selectedTowerKind == TowerKind::Bilibili) {
                 // Draw fire direction arrow
                 Vector2 end = {center.x + bilibiliDir.x * 40, center.y + bilibiliDir.y * 40};
                 DrawLine(static_cast<int>(center.x), static_cast<int>(center.y),
@@ -1022,7 +612,6 @@ void GameFrontend::renderGame() {
                 retryCurrentLevel();
             } else {
                 // Return to level select without redoing the ASTI test.
-                initMap();
                 selectedTowerIndex = -1;
                 showExerciseGuide = false;
                 engine = GameEngine();
@@ -1032,7 +621,7 @@ void GameFrontend::renderGame() {
             gameOverMenuSelection = 0;
         }
     } else if (currentScreen == Screen::Victory) {
-        bool hasNextLevel = (currentLevel < 4);
+        bool hasNextLevel = (currentLevel < maxLevelCount());
         drawVictory(victoryMenuSelection, hasNextLevel);
         if (IsKeyPressed(KEY_UP)) {
             victoryMenuSelection = 0;
@@ -1048,7 +637,6 @@ void GameFrontend::renderGame() {
                 goToNextLevel();
             } else {
                 // Return to level select without redoing the ASTI test.
-                initMap();
                 selectedTowerIndex = -1;
                 showExerciseGuide = false;
                 engine = GameEngine();

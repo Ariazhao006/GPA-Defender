@@ -1,7 +1,8 @@
-#pragma once
+﻿#pragma once
 
 #include "gpa_defender/Block.h"
 #include "gpa_defender/GameEngine.h"
+#include "gpa_defender/LevelData.h"
 #include "gpa_defender/Questionnaire.h"
 #include "gpa_defender/Vector2D.h"
 #include "gpa_defender/WaveManager.h"
@@ -51,15 +52,7 @@ private:
     ChestManager chestManager;
     std::vector<Vector2D> highlandPositions;
 
-    static const std::vector<std::vector<int>> MAP_DATA;
-    static const std::vector<std::vector<int>> MAP_DATA_LEVEL2;
-    static const std::vector<std::vector<int>> MAP_DATA_LEVEL3;
-    static const std::vector<std::vector<int>> MAP_DATA_LEVEL4;
-
-    void initMap();
-    void initPaths();
-    void initWaves();
-    void initWavesForLevel(int level);
+    void loadLevelDefinition(int level);
     void initEngine();
 
     void retryCurrentLevel();
@@ -81,8 +74,6 @@ private:
 
     bool tryPlaceSelectedTower(int row, int col);
     const char* towerName(TowerKind kind) const;
-    int towerCost(TowerKind kind) const;
-    const char* towerDesc(TowerKind kind) const;
 };
 
 }  // namespace frontend

@@ -1,4 +1,4 @@
-///
+﻿///
 /// GameUI.cpp - Implementation of text-based UI for testing
 ///
 #include "gpa_defender/GameUI.h"

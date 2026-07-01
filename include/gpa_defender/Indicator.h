@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #ifndef INDICATOR_H
 #define INDICATOR_H
 

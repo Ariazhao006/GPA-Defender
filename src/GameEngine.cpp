@@ -1,4 +1,4 @@
-#include "gpa_defender/GameEngine.h"
+﻿#include "gpa_defender/GameEngine.h"
 
 #include <utility>
 
@@ -260,6 +260,23 @@ const char* GameEngine::phaseName(GamePhase value) {
     }
 
     return "Unknown";
+}
+
+TowerSpec GameEngine::towerSpec(TowerKind kind) {
+    switch (kind) {
+    case TowerKind::Coffee:
+        return {kind, "Coffee", "Small range, huge burst damage", 50, 92.0f};
+    case TowerKind::AI:
+        return {kind, "AI", "360 sweep, hits all in range (upgradeable)", 100, 205.0f};
+    case TowerKind::Library:
+        return {kind, "Library", "Slows enemies, no direct damage", 120, 228.0f};
+    case TowerKind::Class:
+        return {kind, "Class", "Heavy single hit, long cooldown", 80, 172.0f};
+    case TowerKind::Bilibili:
+        return {kind, "Bilibili", "Long-range beam, configurable direction", 65, 305.0f};
+    }
+
+    return {TowerKind::Coffee, "Coffee", "Small range, huge burst damage", 50, 92.0f};
 }
 
 std::vector<WaveDefinition> GameEngine::defaultWaves() {

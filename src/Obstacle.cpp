@@ -1,4 +1,4 @@
-#include "gpa_defender/Obstacle.h"
+﻿#include "gpa_defender/Obstacle.h"
 
 Obstacle::Obstacle(int cost, float width, float height)
     : cost(cost), position{ 0.0f, 0.0f },

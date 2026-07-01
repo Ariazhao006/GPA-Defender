@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #ifndef WAVE_MANAGER_H
 #define WAVE_MANAGER_H
 

@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #ifndef PLAYER_STATS_H
 #define PLAYER_STATS_H
 

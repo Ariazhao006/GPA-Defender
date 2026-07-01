@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.20)
+﻿cmake_minimum_required(VERSION 3.20)
 
 project(gpa_defender LANGUAGES CXX)
 
@@ -21,6 +21,7 @@ add_library(gpa_defender_core STATIC
     src/Enemy.cpp
     src/GameEngine.cpp
     src/GameUI.cpp
+    src/LevelData.cpp
     src/Obstacle.cpp
     src/PlayerStats.cpp
     src/Questionnaire.cpp
@@ -46,8 +47,12 @@ target_link_libraries(backend_smoke PRIVATE gpa_defender_core)
 add_executable(full_flow_smoke tests/full_flow_smoke_main.cpp)
 target_link_libraries(full_flow_smoke PRIVATE gpa_defender_core)
 
+add_executable(level_data_smoke tests/level_data_smoke_main.cpp)
+target_link_libraries(level_data_smoke PRIVATE gpa_defender_core)
+
 add_test(NAME backend_smoke COMMAND backend_smoke)
 add_test(NAME full_flow_smoke COMMAND full_flow_smoke)
+add_test(NAME level_data_smoke COMMAND level_data_smoke)
 
 # ========== GUI Frontend ==========
 include(FetchContent)

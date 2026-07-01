@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "gpa_defender/Block.h"
 #include "gpa_defender/DefenseTower.h"

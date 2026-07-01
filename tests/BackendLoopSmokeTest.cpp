@@ -1,4 +1,4 @@
-#include "gpa_defender/GameEngine.h"
+﻿#include "gpa_defender/GameEngine.h"
 
 bool runBackendLoopSmokeTest() {
     AstiResult mockAsti;

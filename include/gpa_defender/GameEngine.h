@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #ifndef GAME_ENGINE_H
 #define GAME_ENGINE_H
 
@@ -27,6 +27,14 @@ enum class TowerKind {
     Library,
     Class,
     Bilibili
+};
+
+struct TowerSpec {
+    TowerKind kind = TowerKind::Coffee;
+    const char* name = "";
+    const char* description = "";
+    int cost = 0;
+    float range = 0.0f;
 };
 
 struct GameSnapshot {
@@ -109,6 +117,7 @@ public:
     const WaveManager& getWaveManager() const { return waveManager; }
 
     static const char* phaseName(GamePhase value);
+    static TowerSpec towerSpec(TowerKind kind);
     static std::vector<WaveDefinition> defaultWaves();
 };
 
