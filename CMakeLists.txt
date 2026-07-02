@@ -71,6 +71,7 @@ add_executable(gpa_defender_gui
     src/frontend/Renderer.cpp
     src/frontend/AudioManager.cpp
     src/frontend/ChestManager.cpp
+    src/frontend/TextureManager.cpp
 )
 target_include_directories(gpa_defender_gui PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/include

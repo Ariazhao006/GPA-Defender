@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "gpa_defender/Block.h"
 #include "gpa_defender/DefenseTower.h"
@@ -12,15 +12,17 @@
 
 namespace frontend {
 
-constexpr int TILE_SIZE = 64;
-constexpr int MAP_OFFSET_X = 36;
-constexpr int MAP_OFFSET_Y = 36;
+class TextureManager;
+
+constexpr int TILE_SIZE = 80;
+constexpr int MAP_OFFSET_X = 45;
+constexpr int MAP_OFFSET_Y = 45;
 constexpr int MAP_COLS = 12;
 constexpr int MAP_ROWS = 10;
-constexpr int UI_PANEL_X = 828;
-constexpr int UI_PANEL_WIDTH = 372;
-constexpr int SCREEN_WIDTH = 1200;
-constexpr int SCREEN_HEIGHT = 800;
+constexpr int UI_PANEL_X = 1035;
+constexpr int UI_PANEL_WIDTH = 465;
+constexpr int SCREEN_WIDTH = 1500;
+constexpr int SCREEN_HEIGHT = 1000;
 
 Color tileColor(TileType type);
 Color towerColor(const std::string& name);
@@ -39,22 +41,45 @@ const Font& getUiFont();
 int measureTextF(const char* text, int fontSize);
 void drawTextF(const char* text, int x, int y, int fontSize, Color color);
 
-void drawMap(const Block& block);
-void drawTower(const DefenseTower& tower, bool showRange, bool selected);
+// Helper: pick tile source rect from the map tilesheet (17x12 grid of 64x64)
+Rectangle mapTileSrc(int col, int row);
+
+// Helper: get the sprite name for a given tower/enemy
+const char* towerSpriteName(const std::string& towerName);
+const char* enemySpriteName(const std::string& enemyName);
+
+// Sprite drawing helper
+void drawSprite(const TextureManager& tm, const char* name,
+                float cx, float cy, float scale, Color tint);
+
+// ---- Core draw functions (with optional textures) ----
+// Pass nullptr for tm to fall back to geometric shapes.
+
+void drawMap(const Block& block, const TextureManager* tm = nullptr);
+void drawTower(const DefenseTower& tower, bool showRange, bool selected,
+               const TextureManager* tm = nullptr);
 void drawTowers(const std::vector<std::unique_ptr<DefenseTower>>& towers,
-                int selectedIndex);
-void drawEnemy(const Enemy& enemy);
-void drawEnemies(const std::vector<Enemy*>& enemies);
+                int selectedIndex, const TextureManager* tm = nullptr);
+void drawEnemy(const Enemy& enemy, const TextureManager* tm = nullptr);
+void drawEnemies(const std::vector<Enemy*>& enemies,
+                 const TextureManager* tm = nullptr);
+void drawChests(const std::vector<Chest>& chests,
+                const TextureManager* tm = nullptr);
 void drawUI(const GameSnapshot& snap, int gold, TowerKind selectedTower,
             bool exerciseMode, int selectedTowerIndex, bool showExerciseGuide,
-            float timeScale = 1.0f);
-void drawMainMenu();
-void drawLevelSelect(int unlockedLevel, int hoveredLevel);
+            float timeScale, const TextureManager* tm);
+void drawMainMenu(const TextureManager* tm = nullptr);
+void drawLevelSelect(int unlockedLevel, int hoveredLevel,
+                     const TextureManager* tm = nullptr);
 void drawGameOver(int selection);
 void drawVictory(int selection, bool hasNextLevel);
-void drawChests(const std::vector<Chest>& chests);
 void drawQuestionnaire(const Questionnaire& q, int current,
                        const std::vector<int>& answers);
 void drawAstiSummary(const AstiResult& result);
+
+// ---- Hover preview helpers ----
+void drawHoverPreview(int hoveredRow, int hoveredCol,
+                      TowerKind selectedTower, const Vector2& bilibiliDir,
+                      const Block& block, const TextureManager* tm = nullptr);
 
 }  // namespace frontend

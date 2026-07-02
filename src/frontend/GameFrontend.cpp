@@ -84,6 +84,11 @@ void GameFrontend::initEngine() {
 void GameFrontend::run() {
     SetConfigFlags(FLAG_WINDOW_RESIZABLE);
     InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "GPA Defender");
+
+    // Fix working directory when launched from file explorer (build/bin/)
+    // The assets/ folder is relative to the project root.
+    ChangeDirectory(TextFormat("%s/../..", GetApplicationDirectory()));
+
     SetTargetFPS(60);
     audio.init();
 
@@ -134,6 +139,8 @@ void GameFrontend::run() {
     SetTextureFilter(uiFont.texture, TEXTURE_FILTER_TRILINEAR);
     setUiFont(uiFont);
 
+    textureManager.loadAll();
+
     loadLevelDefinition(currentLevel);
     answers.resize(questionnaire.getQuestions().size(), -1);
 
@@ -162,6 +169,7 @@ void GameFrontend::run() {
         }
     }
 
+    textureManager.unloadAll();
     UnloadFont(uiFont);
     audio.shutdown();
     CloseWindow();
@@ -179,7 +187,7 @@ void GameFrontend::runMainMenu() {
 
     BeginDrawing();
     ClearBackground(Color{20, 20, 35, 255});
-    drawMainMenu();
+    drawMainMenu(&textureManager);
     EndDrawing();
 }
 
@@ -232,17 +240,17 @@ void GameFrontend::runAstiSummary() {
 }
 
 void GameFrontend::runLevelSelect() {
-    const int cardW = 190;
-    const int cardH = 170;
-    const int gap = 35;
+    const int cardW = 238;
+    const int cardH = 213;
+    const int gap = 44;
     const int totalW = cardW * 4 + gap * 3;
     const int startX = SCREEN_WIDTH / 2 - totalW / 2;
     const int cardY = 230;
     const Rectangle retryRect{
-        SCREEN_WIDTH / 2.0f - 140.0f,
-        660.0f,
-        280.0f,
-        48.0f
+        SCREEN_WIDTH / 2.0f - 175.0f,
+        825.0f,
+        350.0f,
+        60.0f
     };
 
     Vector2 mouse = GetMousePosition();
@@ -281,7 +289,7 @@ void GameFrontend::runLevelSelect() {
 
     BeginDrawing();
     ClearBackground(Color{20, 20, 35, 255});
-    drawLevelSelect(unlockedLevel, hoveredLevel);
+    drawLevelSelect(unlockedLevel, hoveredLevel, &textureManager);
     EndDrawing();
 }
 
@@ -325,19 +333,16 @@ void GameFrontend::handleBuildInput() {
         TowerKind kinds[] = {TowerKind::Coffee, TowerKind::AI, TowerKind::Library,
                             TowerKind::Class, TowerKind::Bilibili};
 
-        // Y positions must match drawUI layout:
-        //   Phase(30) Gold(10) Wave(30) Div(12) StatsTitle(22) Stats(80) Gap(8) Div(12) TowersTitle(24)
-        //   = 248 for first tower button
-        //   Then 5*30 + 8 + 12 = Exercise at 418, +38 = StartWave at 456
+        // Y positions must match drawUI layout
         int yTowerStart = 248;
-        int yExModeStart = 418;
-        int yStartWaveStart = 456;
+        int yExModeStart = 438;
+        int yStartWaveStart = 476;
 
         if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
             // Tower selection buttons
             for (int i = 0; i < 5; ++i) {
-                Rectangle btn = {static_cast<float>(lx), static_cast<float>(yTowerStart + i * 30),
-                                 static_cast<float>(w), 26.0f};
+                Rectangle btn = {static_cast<float>(lx), static_cast<float>(yTowerStart + i * 34),
+                                 static_cast<float>(w), 30.0f};
                 if (CheckCollisionPointRec(mouse, btn)) {
                     audio.playClick();
                     selectedTowerKind = kinds[i];
@@ -556,46 +561,29 @@ void GameFrontend::renderGame() {
     BeginDrawing();
     ClearBackground(Color{15, 15, 25, 255});
 
-    drawMap(block);
+    drawMap(block, &textureManager);
 
     // Hover preview for tower placement
     GamePhase phase = engine.getPhase();
     bool canBuild = (phase == GamePhase::Build || phase == GamePhase::WaveCleared);
     if (canBuild && hoveredRow >= 0 && hoveredCol >= 0 && GetMousePosition().x < UI_PANEL_X) {
-        if (block.canPlaceTower(hoveredRow, hoveredCol)) {
-            Vector2 center = gridToScreen(hoveredRow, hoveredCol);
-            Color prevColor = towerColor(towerName(selectedTowerKind));
-            DrawRectangle(static_cast<int>(center.x - TILE_SIZE / 2 + 2),
-                          static_cast<int>(center.y - TILE_SIZE / 2 + 2),
-                          TILE_SIZE - 4, TILE_SIZE - 4,
-                          Color{prevColor.r, prevColor.g, prevColor.b, 80});
-
-            const TowerSpec spec = GameEngine::towerSpec(selectedTowerKind);
-            DrawCircleLines(static_cast<int>(center.x), static_cast<int>(center.y),
-                            spec.range, Color{255,255,255,60});
-            if (selectedTowerKind == TowerKind::Bilibili) {
-                // Draw fire direction arrow
-                Vector2 end = {center.x + bilibiliDir.x * 40, center.y + bilibiliDir.y * 40};
-                DrawLine(static_cast<int>(center.x), static_cast<int>(center.y),
-                         static_cast<int>(end.x), static_cast<int>(end.y), PINK);
-                DrawCircle(static_cast<int>(end.x), static_cast<int>(end.y), 5, PINK);
-            }
-        }
+        drawHoverPreview(hoveredRow, hoveredCol, selectedTowerKind,
+                         {static_cast<float>(bilibiliDir.x), static_cast<float>(bilibiliDir.y)},
+                         block, &textureManager);
     }
 
-    drawTowers(engine.getTowers(), selectedTowerIndex);
+    drawTowers(engine.getTowers(), selectedTowerIndex, &textureManager);
 
     if (phase == GamePhase::WaveRunning) {
-        drawEnemies(engine.getWaveManager().getLiveEnemies());
+        drawEnemies(engine.getWaveManager().getLiveEnemies(), &textureManager);
     }
 
-    // 绘制宝箱
-    drawChests(chestManager.getActiveChests());
+    drawChests(chestManager.getActiveChests(), &textureManager);
 
     GameSnapshot snap = engine.getSnapshot();
     drawUI(snap, engine.getGold(), selectedTowerKind,
            engine.getExerciseMode(), selectedTowerIndex, showExerciseGuide,
-           engine.getTimeScale());
+           engine.getTimeScale(), &textureManager);
 
     // Overlays
     if (currentScreen == Screen::GameOver) {

@@ -8,6 +8,7 @@
 #include "gpa_defender/WaveManager.h"
 #include "frontend/AudioManager.h"
 #include "frontend/ChestManager.h"
+#include "frontend/TextureManager.h"
 #include "raylib.h"
 #include <vector>
 #include <string>
@@ -21,7 +22,7 @@ public:
     void run();
 
 private:
-    Block block{64.0f};
+    Block block{80.0f};
     GameEngine engine;
     std::vector<std::vector<Vector2D>> wavePaths;
 
@@ -50,6 +51,7 @@ private:
     int victoryMenuSelection = 0;   // 0 = 进入下一关/返回主菜单, 1 = 返回主菜单
 
     ChestManager chestManager;
+    TextureManager textureManager;
     std::vector<Vector2D> highlandPositions;
 
     void loadLevelDefinition(int level);
