@@ -22,7 +22,7 @@ public:
     void run();
 
 private:
-    Block block{80.0f};
+    Block block{104.0f};
     GameEngine engine;
     std::vector<std::vector<Vector2D>> wavePaths;
 

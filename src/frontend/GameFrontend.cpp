@@ -240,17 +240,17 @@ void GameFrontend::runAstiSummary() {
 }
 
 void GameFrontend::runLevelSelect() {
-    const int cardW = 238;
-    const int cardH = 213;
-    const int gap = 44;
+    const int cardW = 309;
+    const int cardH = 500;
+    const int gap = 70;
     const int totalW = cardW * 4 + gap * 3;
     const int startX = SCREEN_WIDTH / 2 - totalW / 2;
-    const int cardY = 230;
+    const int cardY = 280;
     const Rectangle retryRect{
-        SCREEN_WIDTH / 2.0f - 175.0f,
-        825.0f,
-        350.0f,
-        60.0f
+        SCREEN_WIDTH / 2.0f - 228.0f,
+        1120.0f,
+        455.0f,
+        90.0f
     };
 
     Vector2 mouse = GetMousePosition();
@@ -313,36 +313,22 @@ void GameFrontend::handleBuildInput() {
 
     // UI panel clicks
     if (mouse.x > UI_PANEL_X) {
-        int lx = UI_PANEL_X + 15;
-        int w = UI_PANEL_WIDTH - 30;
-        int yBase = 0;
-
-        // Compute tower selection button y offset
-        // After stats + divider + "Towers" label: roughly y = 290 + 24 per button
-        // Need to match drawUI layout
-        int ty = 250;  // approximate start, will refine
-        // Actually let's compute from drawUI:
-        // y starts at 20, phase(30), gold(30), wave(20), divider(22), stats(22+20*4=102), divider(22), "Towers"(24)
-        // = 20+30+30+20+12+22+102+12+22+24 ≈ 294
-
-        // Let me just check broad regions
-        // Tower buttons from y≈294 to y≈294+5*30=444
-        // Exercise: ~458
-        // Start Wave: ~496
+        int lx = UI_PANEL_X + 20;
+        int w = UI_PANEL_WIDTH - 39;
 
         TowerKind kinds[] = {TowerKind::Coffee, TowerKind::AI, TowerKind::Library,
                             TowerKind::Class, TowerKind::Bilibili};
 
         // Y positions must match drawUI layout
-        int yTowerStart = 248;
-        int yExModeStart = 438;
-        int yStartWaveStart = 476;
+        int yTowerStart = 457;
+        int yExModeStart = 790;
+        int yStartWaveStart = 854;
 
         if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
             // Tower selection buttons
             for (int i = 0; i < 5; ++i) {
-                Rectangle btn = {static_cast<float>(lx), static_cast<float>(yTowerStart + i * 34),
-                                 static_cast<float>(w), 30.0f};
+                Rectangle btn = {static_cast<float>(lx), static_cast<float>(yTowerStart + i * 60),
+                                 static_cast<float>(w), 54.0f};
                 if (CheckCollisionPointRec(mouse, btn)) {
                     audio.playClick();
                     selectedTowerKind = kinds[i];
@@ -353,7 +339,7 @@ void GameFrontend::handleBuildInput() {
 
             // Exercise mode toggle
             Rectangle exBtn = {static_cast<float>(lx), static_cast<float>(yExModeStart),
-                               static_cast<float>(w), 30.0f};
+                               static_cast<float>(w), 54.0f};
             if (CheckCollisionPointRec(mouse, exBtn)) {
                 audio.playClick();
                 engine.setExerciseMode(!engine.getExerciseMode());
@@ -362,7 +348,7 @@ void GameFrontend::handleBuildInput() {
 
             // Start Wave button
             Rectangle swBtn = {static_cast<float>(lx), static_cast<float>(yStartWaveStart),
-                               static_cast<float>(w), 36.0f};
+                               static_cast<float>(w), 72.0f};
             if (CheckCollisionPointRec(mouse, swBtn)) {
                 audio.playClick();
                 engine.startWave();
@@ -377,7 +363,7 @@ void GameFrontend::handleBuildInput() {
     if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
         // 先检查是否点击了宝箱
         Vector2D mousePos{mouse.x - MAP_OFFSET_X, mouse.y - MAP_OFFSET_Y};
-        if (chestManager.tryOpenChest(mousePos, 30.0f)) {
+        if (chestManager.tryOpenChest(mousePos, 39.0f)) {
             audio.playClick();
             return;
         }
@@ -386,7 +372,7 @@ void GameFrontend::handleBuildInput() {
         if (screenToGrid(mouse, row, col)) {
             const auto& towers = engine.getTowers();
             int clickedTower = -1;
-            float minDist = 30.0f;
+            float minDist = 39.0f;
             for (size_t i = 0; i < towers.size(); ++i) {
                 Vector2 tp = {MAP_OFFSET_X + towers[i]->getPosition().x,
                               MAP_OFFSET_Y + towers[i]->getPosition().y};
@@ -450,7 +436,7 @@ void GameFrontend::handleWaveRunningInput() {
         if (mouse.x > UI_PANEL_X) return;
 
         Vector2D mousePos{mouse.x - MAP_OFFSET_X, mouse.y - MAP_OFFSET_Y};
-        if (chestManager.tryOpenChest(mousePos, 30.0f)) {
+        if (chestManager.tryOpenChest(mousePos, 39.0f)) {
             audio.playClick();
         }
     }
@@ -642,15 +628,15 @@ void GameFrontend::renderGame() {
         static int cachedTextWidth = 0;
         if (cachedMsg != msg) {
             cachedMsg = msg;
-            cachedTextWidth = measureTextF(msg.c_str(), 28);
+            cachedTextWidth = measureTextF(msg.c_str(), 36);
         }
         int tx = SCREEN_WIDTH / 2 - cachedTextWidth / 2;
-        int ty = SCREEN_HEIGHT / 2 - 40;
+        int ty = SCREEN_HEIGHT / 2 - 52;
 
         // 背景半透明黑框
-        DrawRectangle(tx - 20, ty - 10, cachedTextWidth + 40, 50, Color{0, 0, 0, 180});
-        DrawRectangleLines(tx - 20, ty - 10, cachedTextWidth + 40, 50, Color{255, 200, 50, 200});
-        drawTextF(msg.c_str(), tx, ty, 28, Color{255, 220, 100, 255});
+        DrawRectangle(tx - 26, ty - 13, cachedTextWidth + 52, 65, Color{0, 0, 0, 180});
+        DrawRectangleLines(tx - 26, ty - 13, cachedTextWidth + 52, 65, Color{255, 200, 50, 200});
+        drawTextF(msg.c_str(), tx, ty, 36, Color{255, 220, 100, 255});
     }
 
     EndDrawing();

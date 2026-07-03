@@ -30,8 +30,8 @@ Questionnaire::Questionnaire() {
         Question q;
         q.prompt = "你每周运动的频率是？ "; // 注意末尾加了空格，下同
         q.options = {
-            { "每天。 \n一天不运动我浑身难受 ", { { Indicator::Physical, +4 } } },
-            { "3-4次。 \n有空就动 ", { { Indicator::Physical, +2 } } },
+            { "每天。一天不运动我浑身难受 ", { { Indicator::Physical, +4 } } },
+            { "3-4次。有空就动 ", { { Indicator::Physical, +2 } } },
             { "1-2次。差不多动一下 ", { { Indicator::Physical, +1 } } },
             { "无。运动不了一点 ", { { Indicator::Physical, -2 } } },
         };

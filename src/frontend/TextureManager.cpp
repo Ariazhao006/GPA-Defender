@@ -72,9 +72,9 @@ bool TextureManager::loadAll() {
 
 	// --- AI-generated custom tower/enemy textures ---
 	aiTextures.reserve(14);  // prevent reallocation invalidating SpriteDef pointers
-	const char* aiDir = "assets/image/ai_image/";
+	const char* aiDir = "assets/image/no_background/";
 	loadAiTexture("ai_coffee",        std::string(aiDir) + "coffee.png");
-	loadAiTexture("ai_ai",            std::string(aiDir) + "AI.png");
+	loadAiTexture("ai_ai",            std::string(aiDir) + "ai.png");
 	loadAiTexture("ai_library",       std::string(aiDir) + "library.png");
 	loadAiTexture("ai_class",         std::string(aiDir) + "class.png");
 	loadAiTexture("ai_bilibili",      std::string(aiDir) + "bilibili.png");

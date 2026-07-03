@@ -14,15 +14,15 @@ namespace frontend {
 
 class TextureManager;
 
-constexpr int TILE_SIZE = 80;
-constexpr int MAP_OFFSET_X = 45;
-constexpr int MAP_OFFSET_Y = 45;
+constexpr int TILE_SIZE = 104;
+constexpr int MAP_OFFSET_X = 59;
+constexpr int MAP_OFFSET_Y = 59;
 constexpr int MAP_COLS = 12;
 constexpr int MAP_ROWS = 10;
-constexpr int UI_PANEL_X = 1035;
-constexpr int UI_PANEL_WIDTH = 465;
-constexpr int SCREEN_WIDTH = 1500;
-constexpr int SCREEN_HEIGHT = 1000;
+constexpr int UI_PANEL_X = 1346;
+constexpr int UI_PANEL_WIDTH = 605;
+constexpr int SCREEN_WIDTH = 1950;
+constexpr int SCREEN_HEIGHT = 1300;
 
 Color tileColor(TileType type);
 Color towerColor(const std::string& name);
