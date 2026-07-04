@@ -214,6 +214,7 @@ void GameFrontend::startNewGameFlow() {
     answers.assign(questionnaire.getQuestions().size(), -1);
     engine = GameEngine();
     chestManager.reset();
+    effectManager.clear();
     audio.stopBGM();
     currentScreen = Screen::Questionnaire;
 }
@@ -449,6 +450,7 @@ bool GameFrontend::loadSaveSlot(int slot) {
 
     engine.restoreSaveState(state);
     chestManager.reset();
+    effectManager.clear();
     selectedTowerIndex = -1;
     showExerciseGuide = false;
     uiScrollOffset = 0.0f;
@@ -504,6 +506,7 @@ void GameFrontend::startLevel(int level) {
     loadLevelDefinition(level);
     engine.initializeFromAsti(astiResult);
     chestManager.reset();
+    effectManager.clear();
     selectedTowerIndex = -1;
     showExerciseGuide = false;
     hoveredRow = -1;
@@ -1221,6 +1224,8 @@ void GameFrontend::updateGame(float dt) {
     GameSnapshot snapBeforeUpdate = engine.getSnapshot();
     chestManager.update(dt, snapBeforeUpdate.waveIndex, snapBeforeUpdate.totalWaveSpawns);
     engine.update(dt, chestManager.getLiveTargets());
+    effectManager.spawnAll(engine.consumeAttackEvents());
+    effectManager.update(dt);
 
     int aliveAfter = engine.getWaveManager().getActiveEnemyCount();
     GamePhase phaseAfter = engine.getPhase();
@@ -1343,6 +1348,7 @@ void GameFrontend::renderGame() {
     }
 
     drawChests(chestManager.getActiveChests(), &textureManager);
+    effectManager.draw();
 
     drawUI(snap, engine.getGold(), selectedTowerKind,
            engine.getExerciseMode(), selectedTowerIndex, showExerciseGuide,

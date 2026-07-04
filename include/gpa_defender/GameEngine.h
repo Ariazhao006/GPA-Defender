@@ -109,6 +109,7 @@ private:
     std::vector<WaveDefinition> waves;
     WaveManager waveManager;
     std::vector<std::unique_ptr<DefenseTower>> towers;
+    std::vector<TowerAttackEvent> attackEvents;
 
     bool canBuildNow() const;
     void updateSurvivalTimers(float deltaTime);
@@ -148,6 +149,7 @@ public:
     const PlayerStats& getPlayerStats() const { return player; }
     const std::vector<std::unique_ptr<DefenseTower>>& getTowers() const { return towers; }
     const WaveManager& getWaveManager() const { return waveManager; }
+    std::vector<TowerAttackEvent> consumeAttackEvents();
 
     SavedEngineState captureSaveState() const;
     void restoreSaveState(const SavedEngineState& state);

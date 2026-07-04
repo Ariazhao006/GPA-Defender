@@ -79,6 +79,7 @@ add_executable(gpa_defender_gui
     src/frontend/Renderer.cpp
     src/frontend/AudioManager.cpp
     src/frontend/ChestManager.cpp
+    src/frontend/EffectManager.cpp
     src/frontend/TextureManager.cpp
     src/frontend/AssetPaths.cpp
 )

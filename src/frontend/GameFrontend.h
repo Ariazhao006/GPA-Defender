@@ -8,6 +8,7 @@
 #include "gpa_defender/WaveManager.h"
 #include "frontend/AudioManager.h"
 #include "frontend/ChestManager.h"
+#include "frontend/EffectManager.h"
 #include "frontend/TextureManager.h"
 #include "raylib.h"
 #include <array>
@@ -74,6 +75,7 @@ private:
     float statusBannerTimer = 0.0f;
 
     ChestManager chestManager;
+    EffectManager effectManager;
     TextureManager textureManager;
     std::vector<Vector2D> highlandPositions;
 

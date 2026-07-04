@@ -56,18 +56,18 @@ void WaveManager::updateSpawning(float deltaTime) {
 int WaveManager::updateEnemies(float deltaTime) {
     if (!running) return 0;
 
-    int reachedBaseCount = 0;
+    int totalLeakDamage = 0;
     for (ManagedEnemy& managed : enemies) {
         if (managed.enemy != nullptr) {
             const bool hadReachedBase = managed.enemy->hasReachedBase();
             managed.enemy->update(deltaTime, nullptr);
             if (!hadReachedBase && managed.enemy->hasReachedBase()) {
-                ++reachedBaseCount;
+                totalLeakDamage += leakDamageFor(managed.kind);
                 managed.rewardClaimed = true;
             }
         }
     }
-    return reachedBaseCount;
+    return totalLeakDamage;
 }
 
 std::vector<Enemy*> WaveManager::getLiveEnemies() const {
@@ -217,6 +217,27 @@ int WaveManager::rewardFor(EnemyKind kind) {
     }
 
     return 0;
+}
+
+int WaveManager::leakDamageFor(EnemyKind kind) {
+    switch (kind) {
+    case EnemyKind::Subject:
+    case EnemyKind::Social:
+        return 6;
+    case EnemyKind::MorningClass:
+    case EnemyKind::ShortVideo:
+        return 8;
+    case EnemyKind::Research:
+    case EnemyKind::GroupProject:
+        return 10;
+    case EnemyKind::ExamSyllabus:
+    case EnemyKind::PeerPressure:
+        return 14;
+    case EnemyKind::MidtermBoss:
+        return 22;
+    }
+
+    return 10;
 }
 
 const char* WaveManager::enemyKindName(EnemyKind kind) {

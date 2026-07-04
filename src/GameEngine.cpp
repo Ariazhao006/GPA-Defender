@@ -10,7 +10,6 @@ constexpr float kGpaRecoveryIntervalSec = 5.0f;
 constexpr float kGpaRecoveryPerTick = 2.5f;
 constexpr float kExerciseTowerCadenceScale = 0.65f;
 constexpr int kBaseMaxHp = 100;
-constexpr int kBaseDamagePerLeak = 10;
 constexpr float kTowerRangeScale = 1.5f;
 
 } // namespace
@@ -63,6 +62,7 @@ bool GameEngine::startWave() {
 
 void GameEngine::update(float deltaTime, const std::vector<Enemy*>& extraTargets) {
     if (deltaTime < 0.0f) return;
+    attackEvents.clear();
     if (phase != GamePhase::WaveRunning) return;
 
     float scaledDelta = deltaTime * timeScale;
@@ -74,9 +74,9 @@ void GameEngine::update(float deltaTime, const std::vector<Enemy*>& extraTargets
     }
 
     waveManager.updateSpawning(scaledDelta);
-    const int leakedEnemies = waveManager.updateEnemies(scaledDelta);
-    if (leakedEnemies > 0) {
-        baseHp -= leakedEnemies * kBaseDamagePerLeak;
+    const int leakDamage = waveManager.updateEnemies(scaledDelta);
+    if (leakDamage > 0) {
+        baseHp -= leakDamage;
         if (baseHp < 0) baseHp = 0;
     }
     if (!player.isAlive()) {
@@ -89,7 +89,8 @@ void GameEngine::update(float deltaTime, const std::vector<Enemy*>& extraTargets
     }
 
     std::vector<Enemy*> liveEnemies = waveManager.getLiveEnemies();
-    liveEnemies.insert(liveEnemies.end(), extraTargets.begin(), extraTargets.end());
+    std::vector<Enemy*> allTargets = liveEnemies;
+    allTargets.insert(allTargets.end(), extraTargets.begin(), extraTargets.end());
     std::vector<bool> aliveBeforeTowerUpdate = waveManager.captureAliveStates();
     const float towerDeltaTime = player.getExerciseMode()
         ? scaledDelta * kExerciseTowerCadenceScale
@@ -97,7 +98,25 @@ void GameEngine::update(float deltaTime, const std::vector<Enemy*>& extraTargets
 
     for (std::unique_ptr<DefenseTower>& tower : towers) {
         if (tower != nullptr) {
-            tower->update(towerDeltaTime, liveEnemies);
+            const bool prioritizesChests =
+                dynamic_cast<AITower*>(tower.get()) == nullptr &&
+                dynamic_cast<LibraryTower*>(tower.get()) == nullptr &&
+                dynamic_cast<BilibiliTower*>(tower.get()) == nullptr;
+            if (prioritizesChests && !extraTargets.empty()) {
+                bool chestInRange = false;
+                for (Enemy* target : extraTargets) {
+                    if (target != nullptr && target->getState() != EnemyState::DEAD
+                        && tower->isInRange(*target)) {
+                        chestInRange = true;
+                        break;
+                    }
+                }
+                if (chestInRange) {
+                    tower->update(towerDeltaTime, extraTargets, &attackEvents);
+                    continue;
+                }
+            }
+            tower->update(towerDeltaTime, allTargets, &attackEvents);
         }
     }
 
@@ -116,6 +135,12 @@ void GameEngine::update(float deltaTime, const std::vector<Enemy*>& extraTargets
             ? GamePhase::Victory
             : GamePhase::WaveCleared;
     }
+}
+
+std::vector<TowerAttackEvent> GameEngine::consumeAttackEvents() {
+    std::vector<TowerAttackEvent> out = std::move(attackEvents);
+    attackEvents.clear();
+    return out;
 }
 
 bool GameEngine::trySpend(int cost) {

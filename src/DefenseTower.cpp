@@ -1,10 +1,16 @@
 ﻿#include "gpa_defender/DefenseTower.h"
 #include <cmath>
 #include <iostream> // only for console testing without a UI
+#include <utility>
 
 namespace {
 
 constexpr float kTowerRangeScale = 1.5f;
+
+Vector2D enemyCenter(const Enemy& enemy) {
+    Rect box = enemy.getBoundingBox();
+    return {box.x + box.width / 2.0f, box.y + box.height / 2.0f};
+}
 
 } // namespace
 
@@ -71,7 +77,8 @@ Enemy* DefenseTower::pickTarget(const std::vector<Enemy*>& enemies) const {
     return nearest;
 }
 
-void DefenseTower::update(float deltaTime, const std::vector<Enemy*>& enemies) {
+void DefenseTower::update(float deltaTime, const std::vector<Enemy*>& enemies,
+    std::vector<TowerAttackEvent>* events) {
     if (!placed) return;
 
     cooldownTimer += deltaTime;
@@ -80,6 +87,14 @@ void DefenseTower::update(float deltaTime, const std::vector<Enemy*>& enemies) {
     Enemy* target = pickTarget(enemies);
     if (target == nullptr) return;
 
+    if (events != nullptr) {
+        TowerAttackEvent event;
+        event.kind = effectKind();
+        event.origin = position;
+        event.targets.push_back(enemyCenter(*target));
+        event.range = range;
+        events->push_back(std::move(event));
+    }
     attack(*target);
     cooldownTimer = 0.0f;
 }
@@ -107,7 +122,8 @@ LibraryTower::LibraryTower()
     slowFactor(0.45f),
     slowDurationSec(2.85f) {}
 
-void LibraryTower::update(float deltaTime, const std::vector<Enemy*>& enemies) {
+void LibraryTower::update(float deltaTime, const std::vector<Enemy*>& enemies,
+    std::vector<TowerAttackEvent>* events) {
     if (!placed) return;
 
     cooldownTimer += deltaTime;
@@ -115,6 +131,17 @@ void LibraryTower::update(float deltaTime, const std::vector<Enemy*>& enemies) {
 
     std::vector<Enemy*> inRange = collectAliveInRange(enemies);
     if (inRange.empty()) return;
+
+    if (events != nullptr) {
+        TowerAttackEvent event;
+        event.kind = TowerEffectKind::Library;
+        event.origin = position;
+        event.range = range;
+        for (Enemy* e : inRange) {
+            event.targets.push_back(enemyCenter(*e));
+        }
+        events->push_back(std::move(event));
+    }
 
     for (Enemy* e : inRange) {
         e->applySlowEffect(slowFactor, slowDurationSec);
@@ -134,10 +161,80 @@ void LibraryTower::draw() {}
 // --- Class: heavy hit, long recharge ---
 
 ClassTower::ClassTower()
-    : DefenseTower("Class", 80, 172.0f * kTowerRangeScale, 56, 2.38f) {}
+    : DefenseTower("Class", 80, 172.0f * kTowerRangeScale, 8, 0.25f) {}
+
+Enemy* ClassTower::pickLockedOrNewTarget(const std::vector<Enemy*>& enemies) {
+    Enemy* locked = nullptr;
+    float lockedDist = 34.0f;
+    if (hasLockedTarget) {
+        for (Enemy* e : enemies) {
+            if (e == nullptr || e->getState() == EnemyState::DEAD) continue;
+            if (!isInRange(*e)) continue;
+            const Vector2D center = enemyCenter(*e);
+            const float dist = lockedTargetCenter.distanceTo(center);
+            if (dist <= lockedDist) {
+                locked = e;
+                lockedDist = dist;
+            }
+        }
+    }
+
+    if (locked != nullptr) {
+        return locked;
+    }
+
+    Enemy* next = pickTarget(enemies);
+    if (next == nullptr) {
+        hasLockedTarget = false;
+        focusTime = 0.0f;
+        formulaPulseTimer = 0.0f;
+    }
+    return next;
+}
+
+void ClassTower::update(float deltaTime, const std::vector<Enemy*>& enemies,
+    std::vector<TowerAttackEvent>* events) {
+    if (!placed) return;
+
+    Enemy* target = pickLockedOrNewTarget(enemies);
+    if (target == nullptr) return;
+
+    const Vector2D targetCenter = enemyCenter(*target);
+    if (!hasLockedTarget || lockedTargetCenter.distanceTo(targetCenter) > 34.0f) {
+        hasLockedTarget = true;
+        focusTime = 0.0f;
+        formulaPulseTimer = 0.0f;
+    }
+
+    lockedTargetCenter = targetCenter;
+    focusTime += deltaTime;
+    formulaPulseTimer += deltaTime;
+
+    constexpr float kPulseInterval = 0.25f;
+    constexpr float kRampTime = 2.5f;
+    constexpr int kStartDamage = 7;
+    constexpr int kMaxDamage = 26;
+
+    while (formulaPulseTimer >= kPulseInterval && target->getState() != EnemyState::DEAD) {
+        const float ramp = std::min(1.0f, focusTime / kRampTime);
+        damage = static_cast<int>(kStartDamage + (kMaxDamage - kStartDamage) * ramp + 0.5f);
+
+        if (events != nullptr) {
+            TowerAttackEvent event;
+            event.kind = TowerEffectKind::Class;
+            event.origin = position;
+            event.targets.push_back(targetCenter);
+            event.range = range;
+            events->push_back(std::move(event));
+        }
+
+        attack(*target);
+        formulaPulseTimer -= kPulseInterval;
+    }
+}
 
 void ClassTower::attack(Enemy& target) {
-    std::cout << "[Tower] Class sharp question -> " << damage << " damage\n";
+    std::cout << "[Tower] Class formula beam -> " << damage << " damage\n";
     target.takeDamage(damage);
 }
 
@@ -207,7 +304,8 @@ Enemy* BilibiliTower::pickNearestEnemyOnRay(const std::vector<Enemy*>& enemies) 
     return best;
 }
 
-void BilibiliTower::update(float deltaTime, const std::vector<Enemy*>& enemies) {
+void BilibiliTower::update(float deltaTime, const std::vector<Enemy*>& enemies,
+    std::vector<TowerAttackEvent>* events) {
     if (!placed) return;
 
     cooldownTimer += deltaTime;
@@ -216,6 +314,15 @@ void BilibiliTower::update(float deltaTime, const std::vector<Enemy*>& enemies) 
     Enemy* target = pickNearestEnemyOnRay(enemies);
     if (target == nullptr) return;
 
+    if (events != nullptr) {
+        TowerAttackEvent event;
+        event.kind = TowerEffectKind::Bilibili;
+        event.origin = position;
+        event.targets.push_back(enemyCenter(*target));
+        event.direction = fireDirection;
+        event.range = range;
+        events->push_back(std::move(event));
+    }
     attack(*target);
     cooldownTimer = 0.0f;
 }
@@ -275,7 +382,8 @@ void AITower::restoreLevelForSave(int savedLevel) {
     }
 }
 
-void AITower::update(float deltaTime, const std::vector<Enemy*>& enemies) {
+void AITower::update(float deltaTime, const std::vector<Enemy*>& enemies,
+    std::vector<TowerAttackEvent>* events) {
     if (!placed) return;
 
     cooldownTimer += deltaTime;
@@ -283,6 +391,17 @@ void AITower::update(float deltaTime, const std::vector<Enemy*>& enemies) {
 
     std::vector<Enemy*> targets = collectAliveInRange(enemies);
     if (targets.empty()) return;
+
+    if (events != nullptr) {
+        TowerAttackEvent event;
+        event.kind = TowerEffectKind::AI;
+        event.origin = position;
+        event.range = range;
+        for (Enemy* e : targets) {
+            event.targets.push_back(enemyCenter(*e));
+        }
+        events->push_back(std::move(event));
+    }
 
     std::cout << "[Tower] " << towerName << " 360 sweep nails "
         << targets.size() << " foe(s) for " << damage << " each\n";

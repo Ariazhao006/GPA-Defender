@@ -77,6 +77,7 @@ public:
     float getElapsedSec() const { return elapsedSec; }
 
     static int rewardFor(EnemyKind kind);
+    static int leakDamageFor(EnemyKind kind);
     static const char* enemyKindName(EnemyKind kind);
     static std::vector<std::vector<Vector2D>> defaultPaths();
 };

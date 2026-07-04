@@ -465,7 +465,20 @@ void drawTower(const DefenseTower& tower, bool showRange, bool selected,
 
 void drawTowers(const std::vector<std::unique_ptr<DefenseTower>>& towers,
                 int selectedIndex, const TextureManager* tm) {
-    for (size_t i = 0; i < towers.size(); ++i) {
+    std::vector<std::size_t> order;
+    order.reserve(towers.size());
+    for (std::size_t i = 0; i < towers.size(); ++i) {
+        order.push_back(i);
+    }
+    std::sort(order.begin(), order.end(),
+        [&](std::size_t a, std::size_t b) {
+            const Vector2D pa = towers[a]->getPosition();
+            const Vector2D pb = towers[b]->getPosition();
+            if (pa.y == pb.y) return pa.x < pb.x;
+            return pa.y < pb.y;
+        });
+
+    for (std::size_t i : order) {
         drawTower(*towers[i], (static_cast<int>(i) == selectedIndex),
                   static_cast<int>(i) == selectedIndex, tm);
     }

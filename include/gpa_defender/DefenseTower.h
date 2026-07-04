@@ -7,6 +7,22 @@
 #include "gpa_defender/Vector2D.h"
 #include "gpa_defender/Enemy.h"
 
+enum class TowerEffectKind {
+    Coffee,
+    AI,
+    Library,
+    Class,
+    Bilibili
+};
+
+struct TowerAttackEvent {
+    TowerEffectKind kind = TowerEffectKind::Coffee;
+    Vector2D origin{0.0f, 0.0f};
+    std::vector<Vector2D> targets;
+    Vector2D direction{1.0f, 0.0f};
+    float range = 0.0f;
+};
+
 /**
  * @class DefenseTower
  * @brief Top-level defense tower base class (abstract, Level 1 inheritance).
@@ -44,7 +60,8 @@ public:
 
     // Called every frame by the main loop:
     // accumulate cooldown -> pick a target -> attack.
-    virtual void update(float deltaTime, const std::vector<Enemy*>& enemies);
+    virtual void update(float deltaTime, const std::vector<Enemy*>& enemies,
+        std::vector<TowerAttackEvent>* events = nullptr);
 
     // Polymorphic attack: deal damage to one enemy. Default impl just
     // calls takeDamage(); subclasses can override to print themed lines
@@ -53,6 +70,7 @@ public:
 
     // Pure-virtual rendering hook for the front-end.
     virtual void draw() = 0;
+    virtual TowerEffectKind effectKind() const = 0;
 
     // Helpers
     bool canAttackNow() const;                                // is the cooldown ready?
@@ -80,6 +98,7 @@ public:
 class CoffeeTower : public DefenseTower {
 public:
     CoffeeTower();
+    TowerEffectKind effectKind() const override { return TowerEffectKind::Coffee; }
     void attack(Enemy& target) override;
     void draw() override;
 };
@@ -113,7 +132,9 @@ public:
     int getMaxLevel() const { return maxLevel; }
     void restoreLevelForSave(int savedLevel);
 
-    void update(float deltaTime, const std::vector<Enemy*>& enemies) override;
+    TowerEffectKind effectKind() const override { return TowerEffectKind::AI; }
+    void update(float deltaTime, const std::vector<Enemy*>& enemies,
+        std::vector<TowerAttackEvent>* events = nullptr) override;
 
     void attack(Enemy& target) override;
     void draw() override;
@@ -131,7 +152,9 @@ private:
 public:
     LibraryTower();
 
-    void update(float deltaTime, const std::vector<Enemy*>& enemies) override;
+    TowerEffectKind effectKind() const override { return TowerEffectKind::Library; }
+    void update(float deltaTime, const std::vector<Enemy*>& enemies,
+        std::vector<TowerAttackEvent>* events = nullptr) override;
 
     void attack(Enemy& target) override;
     void draw() override;
@@ -139,11 +162,22 @@ public:
 
 /**
  * @class ClassTower
- * @brief Class: one heavy hit, long downtime between attacks.
+ * @brief Class: locks one target and ramps continuous formula damage over time.
  */
 class ClassTower : public DefenseTower {
+private:
+    bool hasLockedTarget = false;
+    Vector2D lockedTargetCenter{0.0f, 0.0f};
+    float focusTime = 0.0f;
+    float formulaPulseTimer = 0.0f;
+
+    Enemy* pickLockedOrNewTarget(const std::vector<Enemy*>& enemies);
+
 public:
     ClassTower();
+    TowerEffectKind effectKind() const override { return TowerEffectKind::Class; }
+    void update(float deltaTime, const std::vector<Enemy*>& enemies,
+        std::vector<TowerAttackEvent>* events = nullptr) override;
     void attack(Enemy& target) override;
     void draw() override;
 };
@@ -172,7 +206,9 @@ public:
     // Pay gold to rotate firing direction 90 degrees (clockwise). For UI upgrade hook.
     bool purchaseDirectionChange(int& playerGold, int goldCost = 40);
 
-    void update(float deltaTime, const std::vector<Enemy*>& enemies) override;
+    TowerEffectKind effectKind() const override { return TowerEffectKind::Bilibili; }
+    void update(float deltaTime, const std::vector<Enemy*>& enemies,
+        std::vector<TowerAttackEvent>* events = nullptr) override;
 
     void attack(Enemy& target) override;
     void draw() override;
