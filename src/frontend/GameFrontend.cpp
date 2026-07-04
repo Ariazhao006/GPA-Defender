@@ -569,6 +569,21 @@ bool GameFrontend::loadSaveSlot(int slot) {
         state.towers.push_back(tower);
     }
 
+    std::vector<SavedTowerState> validTowers;
+    validTowers.reserve(state.towers.size());
+    for (const SavedTowerState& tower : state.towers) {
+        int row = -1;
+        int col = -1;
+        if (!block.worldToGrid(tower.position.x, tower.position.y, row, col)
+            || !block.canPlaceTower(row, col)
+            || !block.placeTowerAt(row, col)) {
+            repairedSave = true;
+            continue;
+        }
+        validTowers.push_back(tower);
+    }
+    state.towers = std::move(validTowers);
+
     engine.restoreSaveState(state);
     chestManager.reset();
     effectManager.clear();

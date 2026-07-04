@@ -418,7 +418,7 @@ const char* GameEngine::phaseName(GamePhase value) {
 TowerSpec GameEngine::towerSpec(TowerKind kind) {
     switch (kind) {
     case TowerKind::Coffee:
-        return {kind, "Coffee", "Small range, huge burst damage", 50, 92.0f * kTowerRangeScale};
+        return {kind, "Coffee", "Small range, huge burst damage", 80, 92.0f * kTowerRangeScale};
     case TowerKind::AI:
         return {kind, "AI", "360 sweep, hits all in range (upgradeable)", 100, 205.0f * kTowerRangeScale};
     case TowerKind::Library:
@@ -429,7 +429,7 @@ TowerSpec GameEngine::towerSpec(TowerKind kind) {
         return {kind, "Bilibili", "Long-range beam, configurable direction", 65, 305.0f * kTowerRangeScale};
     }
 
-    return {TowerKind::Coffee, "Coffee", "Small range, huge burst damage", 50, 92.0f * kTowerRangeScale};
+    return {TowerKind::Coffee, "Coffee", "Small range, huge burst damage", 80, 92.0f * kTowerRangeScale};
 }
 
 std::vector<WaveDefinition> GameEngine::defaultWaves() {
