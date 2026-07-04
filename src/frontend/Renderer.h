@@ -6,6 +6,7 @@
 #include "gpa_defender/GameEngine.h"
 #include "gpa_defender/Questionnaire.h"
 #include "frontend/ChestManager.h"
+#include "frontend/StageScore.h"
 #include "raylib.h"
 #include <cstddef>
 #include <vector>
@@ -83,7 +84,9 @@ void drawMainMenu(const TextureManager* tm = nullptr, bool hasSavedGame = false)
 void drawLevelSelect(int unlockedLevel, int hoveredLevel,
                      const TextureManager* tm = nullptr);
 void drawGameOver(int selection);
-void drawVictory(int selection, bool hasNextLevel);
+void drawVictory(int selection, bool hasNextLevel,
+                 const StageScoreRecord* currentScore,
+                 const std::vector<StageScoreRecord>& stageScores);
 void drawQuestionnaire(const Questionnaire& q, int current,
                        const std::vector<int>& answers);
 void drawAstiSummary(const AstiResult& result);

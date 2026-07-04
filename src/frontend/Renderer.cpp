@@ -4,6 +4,7 @@
 #include "gpa_defender/PlayerStats.h"
 #include "raylib.h"
 #include <algorithm>
+#include <cctype>
 #include <cmath>
 #include <cstdio>
 #include <string>
@@ -70,8 +71,13 @@ Rectangle gameOverOptionRect(int option) {
 }
 
 Rectangle victoryOptionRect(int option, bool hasNextLevel) {
-    const float y = 500.0f + option * 60.0f;
-    return {SCREEN_WIDTH / 2.0f - 255.0f, y, 510.0f, 48.0f};
+    if (hasNextLevel) {
+        const float y = 500.0f + option * 60.0f;
+        return {SCREEN_WIDTH / 2.0f - 255.0f, y, 510.0f, 48.0f};
+    }
+    const float y = 1130.0f;
+    if (option == 0) return {775.0f, y, 320.0f, 64.0f};
+    return {1135.0f, y, 320.0f, 64.0f};
 }
 
 int measureTextF(const char* text, int fontSize) {
@@ -1108,6 +1114,74 @@ void drawLevelSelect(int unlockedLevel, int hoveredLevel, const TextureManager* 
 
 // ---- Game over / Victory ----
 
+void drawVictoryBadge(Vector2 center, bool finalClear) {
+    Color tint = finalClear ? Color{211, 142, 0, 255} : Color{20, 155, 79, 255};
+    Color bg = finalClear ? Color{255, 241, 165, 255} : Color{215, 247, 226, 255};
+    DrawCircle(static_cast<int>(center.x), static_cast<int>(center.y), 68, bg);
+    DrawCircleLines(static_cast<int>(center.x), static_cast<int>(center.y), 68,
+                    finalClear ? Color{245, 213, 84, 255} : Color{177, 232, 194, 255});
+
+    if (finalClear) {
+        Vector2 cap[] = {
+            {center.x - 48.0f, center.y - 8.0f},
+            {center.x, center.y - 30.0f},
+            {center.x + 48.0f, center.y - 8.0f},
+            {center.x, center.y + 14.0f}
+        };
+        DrawLineEx(cap[0], cap[1], 7.0f, tint);
+        DrawLineEx(cap[1], cap[2], 7.0f, tint);
+        DrawLineEx(cap[2], cap[3], 7.0f, tint);
+        DrawLineEx(cap[3], cap[0], 7.0f, tint);
+        DrawRectangleRounded({center.x - 30.0f, center.y + 2.0f, 60.0f, 24.0f},
+                             0.5f, 8, Color{255, 252, 224, 255});
+        DrawRectangleRoundedLines({center.x - 30.0f, center.y + 2.0f, 60.0f, 24.0f},
+                                  0.5f, 8, 5.0f, tint);
+        DrawLineEx({center.x + 42.0f, center.y - 5.0f},
+                   {center.x + 42.0f, center.y + 26.0f}, 5.0f, tint);
+        DrawCircle(static_cast<int>(center.x + 42.0f), static_cast<int>(center.y + 31.0f), 4, tint);
+    } else {
+        DrawRectangleRounded({center.x - 30.0f, center.y - 22.0f, 60.0f, 68.0f},
+                             0.22f, 8, Color{239, 253, 243, 255});
+        DrawRectangleRoundedLines({center.x - 30.0f, center.y - 22.0f, 60.0f, 68.0f},
+                                  0.22f, 8, 6.0f, tint);
+        DrawCircleLines(static_cast<int>(center.x - 42.0f), static_cast<int>(center.y - 4.0f), 16, tint);
+        DrawCircleLines(static_cast<int>(center.x + 42.0f), static_cast<int>(center.y - 4.0f), 16, tint);
+        DrawLineEx({center.x, center.y + 46.0f}, {center.x, center.y + 66.0f}, 6.0f, tint);
+        DrawLineEx({center.x - 24.0f, center.y + 66.0f}, {center.x + 24.0f, center.y + 66.0f}, 6.0f, tint);
+    }
+}
+
+void drawStatusRow(Rectangle rect, const char* label, int value, int threshold, Color accent) {
+    DrawRectangleRounded(rect, 0.12f, 8, Color{255, 255, 252, 255});
+    DrawRectangleRoundedLines(rect, 0.12f, 8, 1.0f, Color{230, 235, 231, 255});
+
+    drawTextF(label, static_cast<int>(rect.x + 24), static_cast<int>(rect.y + 18), 22, kInk);
+    std::string valueText = std::to_string(value) + " / 100";
+    int valueW = measureTextF(valueText.c_str(), 22);
+    drawTextF(valueText.c_str(), static_cast<int>(rect.x + rect.width - valueW - 22),
+              static_cast<int>(rect.y + 18), 22, kInk);
+
+    Rectangle track = {rect.x + 24.0f, rect.y + 56.0f, rect.width - 48.0f, 13.0f};
+    DrawRectangleRounded(track, 0.45f, 8, Color{223, 229, 237, 255});
+    float ratio = std::max(0.0f, std::min(1.0f, value / 100.0f));
+    DrawRectangleRounded({track.x, track.y, track.width * ratio, track.height},
+                         0.45f, 8, accent);
+
+    float thresholdRatio = std::max(0.0f, std::min(1.0f, threshold / 100.0f));
+    float tx = track.x + track.width * thresholdRatio;
+    DrawLineEx({tx, track.y - 3.0f}, {tx, track.y + track.height + 3.0f},
+               2.0f, Color{255, 125, 125, 235});
+    std::string thresholdText = "Threshold: " + std::to_string(threshold);
+    int thresholdW = measureTextF(thresholdText.c_str(), 16);
+    drawTextF(thresholdText.c_str(), static_cast<int>(rect.x + rect.width - thresholdW - 22),
+              static_cast<int>(rect.y + 75), 16, Color{130, 145, 170, 255});
+}
+
+float recordGpa(const StageScoreRecord& record) {
+    if (record.baseMaxHp <= 0) return 0.0f;
+    return std::max(0.0f, std::min(4.0f, 4.0f * record.baseHp / static_cast<float>(record.baseMaxHp)));
+}
+
 void drawGameOver(int selection) {
     DrawRectangle(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT,
                   Color{0, 0, 0, 180});
@@ -1142,24 +1216,22 @@ void drawGameOver(int selection) {
     }
 }
 
-void drawVictory(int selection, bool hasNextLevel) {
-    DrawRectangle(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT,
-                  Color{0, 0, 0, 180});
-
-    const char* msg = "VICTORY!";
-    int tw = measureTextF(msg, 68);
-    drawTextF(msg, SCREEN_WIDTH / 2 - tw / 2, 338, 68, Color{80, 220, 80, 255});
-
-    const char* hint = "You have successfully defended your GPA!";
-    tw = measureTextF(hint, 23);
-    drawTextF(hint, SCREEN_WIDTH / 2 - tw / 2, 442, 23, LIGHTGRAY);
-
-    const char* nextLevel = "Continue to Next Level";
-    const char* levels = "Level Select";
-    const char* menu = "Return to Menu";
-
+void drawVictory(int selection, bool hasNextLevel,
+                 const StageScoreRecord* currentScore,
+                 const std::vector<StageScoreRecord>& stageScores) {
     if (hasNextLevel) {
-        const char* labels[] = {nextLevel, levels, menu};
+        DrawRectangle(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT,
+                      Color{0, 0, 0, 180});
+
+        const char* msg = "VICTORY!";
+        int tw = measureTextF(msg, 68);
+        drawTextF(msg, SCREEN_WIDTH / 2 - tw / 2, 338, 68, Color{80, 220, 80, 255});
+
+        const char* hint = "You have successfully defended your GPA!";
+        tw = measureTextF(hint, 23);
+        drawTextF(hint, SCREEN_WIDTH / 2 - tw / 2, 442, 23, LIGHTGRAY);
+
+        const char* labels[] = {"Continue to Next Level", "Level Select", "Return to Menu"};
         for (int i = 0; i < 3; ++i) {
             Rectangle rect = victoryOptionRect(i, hasNextLevel);
             bool hover = CheckCollisionPointRec(GetMousePosition(), rect);
@@ -1175,24 +1247,187 @@ void drawVictory(int selection, bool hasNextLevel) {
                       26,
                       active ? kInk : kMuted);
         }
+        return;
+    }
+
+    const bool finalClear = !hasNextLevel;
+    const Color primary = finalClear ? Color{210, 137, 0, 255} : Color{23, 140, 69, 255};
+    const Color primarySoft = finalClear ? Color{255, 247, 211, 255} : Color{232, 249, 238, 255};
+    const Color primaryLine = finalClear ? Color{236, 204, 91, 255} : Color{164, 226, 183, 255};
+    const char* stageNames[] = {"Freshman", "Sophomore", "Junior", "Senior"};
+
+    DrawRectangle(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, primarySoft);
+
+    Rectangle panel = {SCREEN_WIDTH / 2.0f - 670.0f, 34.0f, 1340.0f, 1180.0f};
+    DrawRectangleRounded(panel, 0.035f, 10, Color{255, 255, 252, 255});
+    DrawRectangleRoundedLines(panel, 0.035f, 10, 1.5f, primaryLine);
+
+    drawVictoryBadge({SCREEN_WIDTH / 2.0f, 126.0f}, finalClear);
+
+    const char* title = finalClear ? "Happy Graduation!" : "Semester Survived!";
+    int tw = measureTextF(title, 66);
+    drawTextF(title, SCREEN_WIDTH / 2 - tw / 2, 222, 66, primary);
+
+    const char* subtitle = finalClear
+        ? "Outstanding! Review your academic record and final status."
+        : "Congratulations! You balanced your life and maintained your GPA this period.";
+    tw = measureTextF(subtitle, 28);
+    drawTextF(subtitle, SCREEN_WIDTH / 2 - tw / 2, 305, 28, Color{36, 56, 86, 255});
+
+    Rectangle recordCard = {panel.x + 58.0f, panel.y + 374.0f, 570.0f, 610.0f};
+    Rectangle statusCard = {panel.x + 712.0f, panel.y + 374.0f, 570.0f, 610.0f};
+    DrawRectangleRounded(recordCard, 0.035f, 8, Color{247, 249, 252, 255});
+    DrawRectangleRoundedLines(recordCard, 0.035f, 8, 1.0f, Color{215, 224, 235, 255});
+    DrawRectangleRounded(statusCard, 0.035f, 8, Color{247, 249, 252, 255});
+    DrawRectangleRoundedLines(statusCard, 0.035f, 8, 1.0f, Color{215, 224, 235, 255});
+
+    drawTextF("Academic Record", static_cast<int>(recordCard.x + 52),
+              static_cast<int>(recordCard.y + 42), 32, Color{32, 53, 82, 255});
+    drawTextF("Final Status", static_cast<int>(statusCard.x + 52),
+              static_cast<int>(statusCard.y + 42), 32, Color{32, 53, 82, 255});
+    DrawLine(static_cast<int>(recordCard.x + 42), static_cast<int>(recordCard.y + 92),
+             static_cast<int>(recordCard.x + recordCard.width - 42), static_cast<int>(recordCard.y + 92),
+             Color{218, 226, 235, 255});
+    DrawLine(static_cast<int>(statusCard.x + 42), static_cast<int>(statusCard.y + 92),
+             static_cast<int>(statusCard.x + statusCard.width - 42), static_cast<int>(statusCard.y + 92),
+             Color{218, 226, 235, 255});
+
+    float gpaValue = currentScore ? recordGpa(*currentScore) : 0.0f;
+    char gpaText[32];
+    std::snprintf(gpaText, sizeof(gpaText), "%.2f", gpaValue);
+    drawTextF("Final GPA", static_cast<int>(recordCard.x + 42),
+              static_cast<int>(recordCard.y + 150), 28, Color{82, 105, 134, 255});
+    int gpaW = measureTextF(gpaText, 48);
+    drawTextF(gpaText, static_cast<int>(recordCard.x + recordCard.width - gpaW - 54),
+              static_cast<int>(recordCard.y + 126), 48, Color{84, 75, 230, 255});
+
+    auto drawRecordRow = [&](float y, const char* label, const std::string& value) {
+        Rectangle row = {recordCard.x + 42.0f, y, recordCard.width - 84.0f, 70.0f};
+        DrawRectangleRounded(row, 0.12f, 8, Color{255, 255, 252, 255});
+        DrawRectangleRoundedLines(row, 0.12f, 8, 1.0f, Color{232, 236, 241, 255});
+        drawTextF(label, static_cast<int>(row.x + 22), static_cast<int>(row.y + 21),
+                  22, Color{82, 105, 134, 255});
+        int valueW = measureTextF(value.c_str(), 22);
+        drawTextF(value.c_str(), static_cast<int>(row.x + row.width - valueW - 22),
+                  static_cast<int>(row.y + 21), 22, kInk);
+    };
+
+    int waves = currentScore ? currentScore->waveIndex + 1 : 0;
+    drawRecordRow(recordCard.y + 220.0f, "Waves Survived", std::to_string(std::max(0, waves)));
+    std::string milestone = "Stage Cleared";
+    if (currentScore && currentScore->level >= 1 && currentScore->level <= 4) {
+        milestone = std::string(stageNames[currentScore->level - 1]) + " Year Cleared";
+    }
+    drawRecordRow(recordCard.y + 306.0f, "Milestone", milestone);
+
+    DrawLine(static_cast<int>(recordCard.x + 42), static_cast<int>(recordCard.y + 430),
+             static_cast<int>(recordCard.x + recordCard.width - 42), static_cast<int>(recordCard.y + 430),
+             Color{218, 226, 235, 255});
+    const char* journey = "4-YEAR GPA JOURNEY";
+    tw = measureTextF(journey, 20);
+    drawTextF(journey, static_cast<int>(recordCard.x + recordCard.width / 2 - tw / 2),
+              static_cast<int>(recordCard.y + 462), 20, Color{139, 153, 178, 255});
+
+    for (int i = 0; i < 4; ++i) {
+        const StageScoreRecord* record = nullptr;
+        for (const StageScoreRecord& candidate : stageScores) {
+            if (candidate.level == i + 1) {
+                record = &candidate;
+                break;
+            }
+        }
+        float cx = recordCard.x + 90.0f + i * 130.0f;
+        bool active = currentScore && currentScore->level == i + 1;
+        DrawCircle(static_cast<int>(cx), static_cast<int>(recordCard.y + 524), 30,
+                   active ? primarySoft : Color{255, 255, 252, 255});
+        DrawCircleLines(static_cast<int>(cx), static_cast<int>(recordCard.y + 524), 30,
+                        active ? primary : Color{182, 194, 255, 255});
+        std::string score = "--";
+        if (record != nullptr) {
+            char buf[16];
+            std::snprintf(buf, sizeof(buf), "%.1f", recordGpa(*record));
+            score = buf;
+        }
+        int scoreW = measureTextF(score.c_str(), 24);
+        drawTextF(score.c_str(), static_cast<int>(cx - scoreW / 2),
+                  static_cast<int>(recordCard.y + 510), 24, active ? primary : Color{85, 80, 222, 255});
+        std::string stageLabel = stageNames[i];
+        std::transform(stageLabel.begin(), stageLabel.end(), stageLabel.begin(),
+                       [](unsigned char ch) { return static_cast<char>(std::toupper(ch)); });
+        int labelW = measureTextF(stageLabel.c_str(), 13);
+        drawTextF(stageLabel.c_str(), static_cast<int>(cx - labelW / 2),
+                  static_cast<int>(recordCard.y + 565), 13, Color{139, 153, 178, 255});
+    }
+
+    if (currentScore) {
+        drawStatusRow({statusCard.x + 42.0f, statusCard.y + 120.0f, statusCard.width - 84.0f, 86.0f},
+                      "Academic Knowledge", currentScore->academic,
+                      currentScore->thresholdAcademic, indicatorColor(0));
+        drawStatusRow({statusCard.x + 42.0f, statusCard.y + 232.0f, statusCard.width - 84.0f, 86.0f},
+                      "Physical Energy", currentScore->physical,
+                      currentScore->thresholdPhysical, Color{32, 195, 91, 255});
+        drawStatusRow({statusCard.x + 42.0f, statusCard.y + 344.0f, statusCard.width - 84.0f, 86.0f},
+                      "Mental Health", currentScore->mental,
+                      currentScore->thresholdMental, Color{166, 80, 232, 255});
+        drawStatusRow({statusCard.x + 42.0f, statusCard.y + 456.0f, statusCard.width - 84.0f, 86.0f},
+                      "Social Connections", currentScore->connection,
+                      currentScore->thresholdConnection, Color{232, 70, 145, 255});
+    }
+
+    DrawLine(static_cast<int>(panel.x + 58), 1048,
+             static_cast<int>(panel.x + panel.width - 58), 1048, Color{215, 224, 235, 255});
+
+    const char* nextLevel = "Continue Next Term";
+    const char* levels = "Level Select";
+    const char* menu = "Main Menu";
+
+    if (hasNextLevel) {
+        const char* labels[] = {nextLevel, levels, menu};
+        for (int i = 0; i < 3; ++i) {
+            Rectangle rect = victoryOptionRect(i, hasNextLevel);
+            bool hover = CheckCollisionPointRec(GetMousePosition(), rect);
+            bool active = selection == i || hover;
+            bool primaryButton = i == 0;
+            DrawRectangleRounded(rect, 0.22f, 8,
+                                 primaryButton ? (active ? Color{20, 160, 82, 255} : Color{20, 170, 85, 255})
+                                               : (active ? Color{246, 250, 247, 255} : Color{255, 255, 252, 255}));
+            DrawRectangleRoundedLines(rect, 0.22f, 8, 1.0f,
+                                      primaryButton ? Color{20, 145, 75, 255}
+                                                    : (active ? primary : Color{196, 207, 222, 255}));
+            tw = measureTextF(labels[i], 24);
+            drawTextF(labels[i],
+                      static_cast<int>(rect.x + rect.width / 2 - tw / 2),
+                      static_cast<int>(rect.y + 19),
+                      24,
+                      primaryButton ? WHITE : kInk);
+        }
     } else {
         const char* labels[] = {levels, menu};
         for (int i = 0; i < 2; ++i) {
             Rectangle rect = victoryOptionRect(i, hasNextLevel);
             bool hover = CheckCollisionPointRec(GetMousePosition(), rect);
             bool active = selection == i || hover;
+            bool primaryButton = i == 0;
             DrawRectangleRounded(rect, 0.22f, 8,
-                                 active ? Color{220, 246, 226, 245} : Color{250, 251, 248, 230});
+                                 primaryButton ? (active ? Color{212, 142, 0, 255} : Color{225, 153, 0, 255})
+                                               : (active ? Color{255, 251, 238, 255} : Color{255, 255, 252, 255}));
             DrawRectangleRoundedLines(rect, 0.22f, 8, 1.0f,
-                                      active ? Color{80, 220, 80, 255} : Color{190, 190, 190, 220});
-            tw = measureTextF(labels[i], 26);
+                                      primaryButton ? Color{196, 126, 0, 255}
+                                                    : (active ? primary : Color{196, 207, 222, 255}));
+            tw = measureTextF(labels[i], 24);
             drawTextF(labels[i],
                       static_cast<int>(rect.x + rect.width / 2 - tw / 2),
-                      static_cast<int>(rect.y + 10),
-                      26,
-                      active ? kInk : kMuted);
+                      static_cast<int>(rect.y + 19),
+                      24,
+                      primaryButton ? WHITE : kInk);
         }
     }
+
+    const char* tip = finalClear
+        ? "Developer Note: Thank you for playing GPA Defender!"
+        : "Tip: The next term will bring tougher deadlines. Spend your gold wisely.";
+    tw = measureTextF(tip, 22);
+    drawTextF(tip, SCREEN_WIDTH / 2 - tw / 2, 1225, 22, Color{126, 143, 164, 255});
 }
 
 // ---- Questionnaire / ASTI ----

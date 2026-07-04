@@ -159,6 +159,57 @@ std::vector<int> parseAnswers(const std::string& value) {
     return out;
 }
 
+std::string serializeStageScore(const StageScoreRecord& record) {
+    std::ostringstream out;
+    out << record.level << ","
+        << record.score << ","
+        << record.gold << ","
+        << record.baseHp << ","
+        << record.baseMaxHp << ","
+        << record.academic << ","
+        << record.physical << ","
+        << record.mental << ","
+        << record.connection << ","
+        << record.waveIndex << ","
+        << record.thresholdAcademic << ","
+        << record.thresholdPhysical << ","
+        << record.thresholdMental << ","
+        << record.thresholdConnection << ","
+        << record.timestamp;
+    return out.str();
+}
+
+bool parseStageScore(const std::string& value, StageScoreRecord& out) {
+    std::vector<std::string> parts = splitString(value, ',');
+    if (parts.size() < 10) return false;
+    out.level = std::atoi(parts[0].c_str());
+    out.score = std::atoi(parts[1].c_str());
+    out.gold = std::atoi(parts[2].c_str());
+    out.baseHp = std::atoi(parts[3].c_str());
+    out.baseMaxHp = std::atoi(parts[4].c_str());
+    out.academic = std::atoi(parts[5].c_str());
+    out.physical = std::atoi(parts[6].c_str());
+    out.mental = std::atoi(parts[7].c_str());
+    out.connection = std::atoi(parts[8].c_str());
+    out.waveIndex = std::atoi(parts[9].c_str());
+    if (parts.size() >= 15) {
+        out.thresholdAcademic = std::atoi(parts[10].c_str());
+        out.thresholdPhysical = std::atoi(parts[11].c_str());
+        out.thresholdMental = std::atoi(parts[12].c_str());
+        out.thresholdConnection = std::atoi(parts[13].c_str());
+        out.timestamp = parts[14];
+    } else {
+        out.timestamp = parts.size() >= 11 ? parts[10] : "";
+    }
+    if (out.level < 1) out.level = 1;
+    if (out.baseMaxHp <= 0) out.baseMaxHp = 100;
+    if (out.thresholdAcademic <= 0) out.thresholdAcademic = 50;
+    if (out.thresholdPhysical <= 0) out.thresholdPhysical = 50;
+    if (out.thresholdMental <= 0) out.thresholdMental = 50;
+    if (out.thresholdConnection <= 0) out.thresholdConnection = 50;
+    return true;
+}
+
 } // namespace
 
 const char* GameFrontend::towerName(TowerKind kind) const {
@@ -186,6 +237,58 @@ void GameFrontend::showStatusBanner(const std::string& text) {
     statusBannerTimer = 2.15f;
 }
 
+StageScoreRecord GameFrontend::makeStageScoreRecord() const {
+    GameSnapshot snapshot = engine.getSnapshot();
+    StageScoreRecord record;
+    record.level = currentLevel;
+    record.gold = snapshot.gold;
+    record.baseHp = snapshot.baseHp;
+    record.baseMaxHp = snapshot.baseMaxHp;
+    record.academic = snapshot.currentAcademic;
+    record.physical = snapshot.currentPhysical;
+    record.mental = snapshot.currentMental;
+    record.connection = snapshot.currentConnection;
+    record.thresholdAcademic = snapshot.thresholdAcademic;
+    record.thresholdPhysical = snapshot.thresholdPhysical;
+    record.thresholdMental = snapshot.thresholdMental;
+    record.thresholdConnection = snapshot.thresholdConnection;
+    record.waveIndex = snapshot.waveIndex;
+    record.timestamp = nowTimestamp();
+
+    const int survivalScore = record.baseMaxHp > 0
+        ? record.baseHp * 1000 / record.baseMaxHp
+        : 0;
+    const int statScore = (record.academic + record.physical +
+                           record.mental + record.connection) * 5;
+    const int levelBonus = record.level * 500;
+    record.score = std::max(0, survivalScore + statScore + record.gold + levelBonus);
+    return record;
+}
+
+void GameFrontend::recordCurrentStageScore() {
+    StageScoreRecord record = makeStageScoreRecord();
+    for (StageScoreRecord& existing : stageScores) {
+        if (existing.level == record.level) {
+            existing = record;
+            stageScoreRecordedForCurrentLevel = true;
+            return;
+        }
+    }
+    stageScores.push_back(record);
+    std::sort(stageScores.begin(), stageScores.end(),
+              [](const StageScoreRecord& a, const StageScoreRecord& b) {
+                  return a.level < b.level;
+              });
+    stageScoreRecordedForCurrentLevel = true;
+}
+
+const StageScoreRecord* GameFrontend::currentStageScore() const {
+    for (const StageScoreRecord& record : stageScores) {
+        if (record.level == currentLevel) return &record;
+    }
+    return nullptr;
+}
+
 void GameFrontend::startNewGameFlow() {
     audio.playClick();
     int slot = pendingOverwriteSlot >= 0 ? pendingOverwriteSlot : firstEmptySaveSlot();
@@ -207,6 +310,8 @@ void GameFrontend::startNewGameFlow() {
     gameOverMenuSelection = 0;
     victoryMenuSelection = 0;
     savedGameAvailable = true;
+    stageScores.clear();
+    stageScoreRecordedForCurrentLevel = false;
     pendingOverwriteSlot = -1;
     statusBannerTimer = 0.0f;
     statusBannerText.clear();
@@ -295,8 +400,7 @@ bool GameFrontend::writeCurrentSave() {
     if (currentSaveSlot < 0 || currentSaveSlot >= static_cast<int>(saveSlots.size())) return false;
     GameSnapshot snapshot = engine.getSnapshot();
     if (snapshot.phase == GamePhase::PreGame ||
-        snapshot.phase == GamePhase::GameOver ||
-        snapshot.phase == GamePhase::Victory) {
+        snapshot.phase == GamePhase::GameOver) {
         return false;
     }
     if (snapshot.thresholdAcademic <= 0 || snapshot.thresholdPhysical <= 0 ||
@@ -318,7 +422,7 @@ bool GameFrontend::writeCurrentSave() {
     slot.phase = state.phase;
     slot.occupied = true;
 
-    out << "version=1\n";
+    out << "version=2\n";
     out << "name=" << sanitizeSaveName(slot.name) << "\n";
     out << "timestamp=" << slot.timestamp << "\n";
     out << "level=" << currentLevel << "\n";
@@ -342,6 +446,10 @@ bool GameFrontend::writeCurrentSave() {
     out << "thresholdMental=" << state.thresholdMental << "\n";
     out << "thresholdConnection=" << state.thresholdConnection << "\n";
     out << "tags=" << joinStrings(state.astiTags, '|') << "\n";
+    out << "stageScoreCount=" << stageScores.size() << "\n";
+    for (std::size_t i = 0; i < stageScores.size(); ++i) {
+        out << "stageScore" << i << "=" << serializeStageScore(stageScores[i]) << "\n";
+    }
     out << "towerCount=" << state.towers.size() << "\n";
     for (std::size_t i = 0; i < state.towers.size(); ++i) {
         const SavedTowerState& tower = state.towers[i];
@@ -413,6 +521,19 @@ bool GameFrontend::loadSaveSlot(int slot) {
     state.thresholdMental = std::atoi(valueOf("thresholdMental", "50").c_str());
     state.thresholdConnection = std::atoi(valueOf("thresholdConnection", "50").c_str());
     state.astiTags = splitString(valueOf("tags"), '|');
+    stageScores.clear();
+    const int scoreCount = std::max(0, std::atoi(valueOf("stageScoreCount", "0").c_str()));
+    for (int i = 0; i < scoreCount; ++i) {
+        StageScoreRecord record;
+        if (parseStageScore(valueOf("stageScore" + std::to_string(i)), record)) {
+            stageScores.push_back(record);
+        }
+    }
+    std::sort(stageScores.begin(), stageScores.end(),
+              [](const StageScoreRecord& a, const StageScoreRecord& b) {
+                  return a.level < b.level;
+              });
+    stageScoreRecordedForCurrentLevel = false;
 
     bool repairedSave = false;
     if (state.thresholdAcademic <= 0 || state.thresholdPhysical <= 0 ||
@@ -513,6 +634,7 @@ void GameFrontend::startLevel(int level) {
     hoveredCol = -1;
     gameOverMenuSelection = 0;
     victoryMenuSelection = 0;
+    stageScoreRecordedForCurrentLevel = false;
     currentScreen = Screen::Game;
     savedGameAvailable = true;
     writeCurrentSave();
@@ -1248,6 +1370,13 @@ void GameFrontend::updateGame(float dt) {
             audio.playGameOver();
             showStatusBanner("Game Over");
         } else if (phaseAfter == GamePhase::Victory) {
+            if (currentLevel < maxLevelCount()) {
+                unlockedLevel = std::max(unlockedLevel, currentLevel + 1);
+            }
+            if (!stageScoreRecordedForCurrentLevel) {
+                recordCurrentStageScore();
+            }
+            writeCurrentSave();
             savedGameAvailable = false;
             audio.stopBGM();
             audio.playVictory();
@@ -1285,9 +1414,6 @@ void GameFrontend::updateGame(float dt) {
     if (phaseAfter == GamePhase::GameOver) {
         currentScreen = Screen::GameOver;
     } else if (phaseAfter == GamePhase::Victory) {
-        if (currentLevel < maxLevelCount()) {
-            unlockedLevel = std::max(unlockedLevel, currentLevel + 1);
-        }
         currentScreen = Screen::Victory;
     }
 }
@@ -1409,7 +1535,7 @@ void GameFrontend::renderGame() {
         }
     } else if (currentScreen == Screen::Victory) {
         bool hasNextLevel = (currentLevel < maxLevelCount());
-        drawVictory(victoryMenuSelection, hasNextLevel);
+        drawVictory(victoryMenuSelection, hasNextLevel, currentStageScore(), stageScores);
         Vector2 mouse = GetMousePosition();
         const int optionCount = hasNextLevel ? 3 : 2;
         for (int i = 0; i < optionCount; ++i) {

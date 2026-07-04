@@ -9,6 +9,7 @@
 #include "frontend/AudioManager.h"
 #include "frontend/ChestManager.h"
 #include "frontend/EffectManager.h"
+#include "frontend/StageScore.h"
 #include "frontend/TextureManager.h"
 #include "raylib.h"
 #include <array>
@@ -71,6 +72,8 @@ private:
     bool saveSlotsForNewGame = false;
     std::string saveNameInput;
     std::array<SaveSlotInfo, 5> saveSlots;
+    std::vector<StageScoreRecord> stageScores;
+    bool stageScoreRecordedForCurrentLevel = false;
     std::string statusBannerText;
     float statusBannerTimer = 0.0f;
 
@@ -113,6 +116,9 @@ private:
     void refreshSaveSlots();
     bool writeCurrentSave();
     bool loadSaveSlot(int slot);
+    StageScoreRecord makeStageScoreRecord() const;
+    void recordCurrentStageScore();
+    const StageScoreRecord* currentStageScore() const;
     int latestSaveSlot() const;
     int firstEmptySaveSlot() const;
     void beginNewSaveNaming(int overwriteSlot);
