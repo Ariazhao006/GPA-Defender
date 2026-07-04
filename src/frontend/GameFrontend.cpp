@@ -1126,12 +1126,29 @@ bool GameFrontend::tryPlaceSelectedTower(int row, int col) {
 void GameFrontend::handleBuildInput() {
     Vector2 mouse = GetMousePosition();
 
+    if (primaryClickPressed() && mouse.x < UI_PANEL_X && mouse.y < MAP_OFFSET_Y) {
+        TowerKind kinds[] = {TowerKind::Coffee, TowerKind::AI, TowerKind::Library,
+                             TowerKind::Class, TowerKind::Bilibili};
+        for (int i = 0; i < 5; ++i) {
+            if (CheckCollisionPointRec(mouse, seedBarTowerRect(i))) {
+                audio.playClick();
+                selectedTowerKind = kinds[i];
+                selectedTowerIndex = -1;
+                showExerciseGuide = false;
+                blockMouseClickUntilRelease();
+                return;
+            }
+        }
+        blockMouseClickUntilRelease();
+        return;
+    }
+
     if (mouse.x > UI_PANEL_X) {
         const float wheel = GetMouseWheelMove();
         if (wheel != 0.0f) {
             uiScrollOffset -= wheel * 60.0f;
             if (uiScrollOffset < 0.0f) uiScrollOffset = 0.0f;
-            if (uiScrollOffset > 180.0f) uiScrollOffset = 180.0f;
+            if (uiScrollOffset > 0.0f) uiScrollOffset = 0.0f;
         }
     }
 
@@ -1140,31 +1157,14 @@ void GameFrontend::handleBuildInput() {
         int lx = UI_PANEL_X + 20;
         int w = UI_PANEL_WIDTH - 39;
 
-        TowerKind kinds[] = {TowerKind::Coffee, TowerKind::AI, TowerKind::Library,
-                            TowerKind::Class, TowerKind::Bilibili};
-
         // Y positions must match drawUI layout
-        int yTowerStart = 457;
-        int yExModeStart = 790;
-        int ySpeedStart = 854;
-        int yStartWaveStart = 918;
-        int yReturnStart = 1002;
-        int yLevelSelectStart = 1068;
+        int yExModeStart = 457;
+        int ySpeedStart = 521;
+        int yStartWaveStart = 585;
+        int yReturnStart = 669;
+        int yLevelSelectStart = 735;
 
         if (primaryClickPressed()) {
-            // Tower selection buttons
-            for (int i = 0; i < 5; ++i) {
-                Rectangle btn = {static_cast<float>(lx),
-                                 static_cast<float>(yTowerStart + i * 60) - uiScrollOffset,
-                                 static_cast<float>(w), 54.0f};
-                if (CheckCollisionPointRec(mouse, btn)) {
-                    audio.playClick();
-                    selectedTowerKind = kinds[i];
-                    selectedTowerIndex = -1;
-                    showExerciseGuide = false;
-                }
-            }
-
             // Exercise mode toggle
             Rectangle exBtn = {static_cast<float>(lx),
                                static_cast<float>(yExModeStart) - uiScrollOffset,
@@ -1429,7 +1429,7 @@ void GameFrontend::updateGame(float dt) {
     if (phaseAfter == GamePhase::GameOver) {
         currentScreen = Screen::GameOver;
     } else if (phaseAfter == GamePhase::Victory) {
-        currentScreen = Screen::Victory;
+        currentScreen = statusBannerTimer > 0.0f ? Screen::Game : Screen::Victory;
     }
 }
 
@@ -1437,6 +1437,7 @@ void GameFrontend::renderGame() {
     BeginDrawing();
     ClearBackground(Color{246, 248, 244, 255});
 
+    drawSeedBar(engine.getGold(), selectedTowerKind, &textureManager);
     drawMap(block, &textureManager);
     GameSnapshot snap = engine.getSnapshot();
     drawBaseHealth(block, snap.baseHp, snap.baseMaxHp);

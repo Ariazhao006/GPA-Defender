@@ -80,6 +80,10 @@ Rectangle victoryOptionRect(int option, bool hasNextLevel) {
     return {1135.0f, y, 320.0f, 64.0f};
 }
 
+Rectangle seedBarTowerRect(int index) {
+    return {220.0f + index * 160.0f, 18.0f, 142.0f, 126.0f};
+}
+
 int measureTextF(const char* text, int fontSize) {
     Vector2 sz = MeasureTextEx(gUiFont, text, static_cast<float>(fontSize), 0.0f);
     return static_cast<int>(sz.x);
@@ -655,16 +659,16 @@ void drawTowerGuide(TowerKind selectedTower, int x, int y, int width,
     drawTextF(title, x + 55, y + 18, 30, kInk);
     drawTextF(name, x + width - measureTextF(name, 30) - 20, y + 18, 30, towerColor(name));
 
-    int lineY = y + 72;
+    int lineY = y + 76;
     for (const std::string& line : lines) {
         drawTextF(line.c_str(), x + 20, lineY, 24, kMuted);
-        lineY += 36;
+        lineY += 42;
     }
 
     if (selectedTowerIndex < 0) {
-        drawTextF("Click a highland tile to place it.", x + 20, y + 210, 20, kMuted);
+        drawTextF("Click a highland tile to place it.", x + 20, y + 220, 20, kMuted);
     } else {
-        drawTextF("A placed tower is selected.", x + 20, y + 210, 20, kMuted);
+        drawTextF("A placed tower is selected.", x + 20, y + 220, 20, kMuted);
     }
 }
 
@@ -687,13 +691,13 @@ void drawExerciseGuide(int x, int y, int width) {
         "Tower fire rate drops to 65%."
     };
 
-    int lineY = y + 72;
+    int lineY = y + 76;
     for (const std::string& line : lines) {
         drawTextF(line.c_str(), x + 20, lineY, 24, kMuted);
-        lineY += 36;
+        lineY += 42;
     }
 
-    drawTextF("Click Exercise again to turn it off.", x + 20, y + 210, 20, kMuted);
+    drawTextF("Click Exercise again to turn it off.", x + 20, y + 220, 20, kMuted);
 }
 
 // ---- Hover preview ----
@@ -735,6 +739,66 @@ void drawHoverPreview(int hoveredRow, int hoveredCol,
 
 // ---- Main drawUI ----
 
+void drawSeedBar(int gold, TowerKind selectedTower, const TextureManager* tm) {
+    DrawRectangle(0, 0, UI_PANEL_X, MAP_OFFSET_Y - 35, Color{250, 251, 248, 250});
+    DrawRectangle(0, MAP_OFFSET_Y - 36, UI_PANEL_X, 1, kPanelLine);
+
+    Rectangle goldCard = {18.0f, 18.0f, 170.0f, 126.0f};
+    DrawRectangleRounded(goldCard, 0.08f, 8, Color{255, 255, 252, 255});
+    DrawRectangleRoundedLines(goldCard, 0.08f, 8, 1.5f, kPanelLine);
+    if (tm) {
+        drawSprite(*tm, "tile_coin", goldCard.x + 44.0f, goldCard.y + 52.0f, 0.78f, GOLD);
+    } else {
+        DrawCircle(static_cast<int>(goldCard.x + 42), static_cast<int>(goldCard.y + 50), 16, GOLD);
+    }
+    drawTextF(std::to_string(gold).c_str(), static_cast<int>(goldCard.x + 75),
+              static_cast<int>(goldCard.y + 34), 40, kWarn);
+    drawTextF("FOCUS", static_cast<int>(goldCard.x + 44),
+              static_cast<int>(goldCard.y + 86), 20, kMuted);
+
+    TowerKind kinds[] = {TowerKind::Coffee, TowerKind::AI, TowerKind::Library,
+                         TowerKind::Class, TowerKind::Bilibili};
+
+    for (int i = 0; i < 5; ++i) {
+        const TowerSpec spec = GameEngine::towerSpec(kinds[i]);
+        Rectangle card = seedBarTowerRect(i);
+        bool selected = selectedTower == kinds[i];
+        bool affordable = gold >= spec.cost;
+        bool hover = CheckCollisionPointRec(GetMousePosition(), card);
+        Color cardBg = selected ? kAccentSoft
+                      : (hover ? Color{245, 248, 244, 255} : Color{255, 255, 252, 255});
+        Color border = selected ? kAccent : (hover ? Color{160, 180, 170, 255} : kPanelLine);
+
+        DrawRectangleRounded(card, 0.08f, 8, cardBg);
+        DrawRectangleRoundedLines(card, 0.08f, 8, selected ? 2.0f : 1.3f, border);
+
+        Rectangle pricePill = {card.x + 10.0f, card.y + 9.0f, 52.0f, 28.0f};
+        DrawRectangleRounded(pricePill, 0.4f, 8,
+                             affordable ? Color{255, 246, 199, 255} : Color{235, 238, 235, 255});
+        drawTextF(std::to_string(spec.cost).c_str(), static_cast<int>(pricePill.x + 9),
+                  static_cast<int>(pricePill.y + 3), 18, affordable ? kWarn : kMuted);
+
+        Color iconBg = affordable ? Color{235, 242, 246, 255} : Color{235, 238, 235, 255};
+        DrawCircle(static_cast<int>(card.x + card.width / 2),
+                   static_cast<int>(card.y + 57), 30, iconBg);
+        if (tm) {
+            drawSprite(*tm, towerSpriteName(spec.name),
+                       card.x + card.width / 2, card.y + 51.0f, 0.031f,
+                       affordable ? WHITE : Color{145, 150, 145, 190});
+        } else {
+            DrawCircle(static_cast<int>(card.x + card.width / 2),
+                       static_cast<int>(card.y + 57), 13,
+                       affordable ? towerColor(spec.name) : kMuted);
+        }
+
+        std::string label = spec.name;
+        if (label == "AI") label = "AI Assistant";
+        int labelW = measureTextF(label.c_str(), 18);
+        drawTextF(label.c_str(), static_cast<int>(card.x + card.width / 2 - labelW / 2),
+                  static_cast<int>(card.y + 100), 18, affordable ? kInk : kMuted);
+    }
+}
+
 void drawUI(const GameSnapshot& snap, int gold, TowerKind selectedTower,
             bool exerciseMode, int selectedTowerIndex, bool showExerciseGuide,
             float timeScale, float panelScrollOffset, const TextureManager* tm) {
@@ -750,7 +814,7 @@ void drawUI(const GameSnapshot& snap, int gold, TowerKind selectedTower,
     const int lx = x + 20;
 
     drawTextF(GameEngine::phaseName(snap.phase), lx, y, 42, phaseColor(snap.phase));
-    y += 54;
+    y += 66;
 
     // Gold with coin icon
     if (tm) {
@@ -760,13 +824,13 @@ void drawUI(const GameSnapshot& snap, int gold, TowerKind selectedTower,
     } else {
         drawTextF(("Gold: " + std::to_string(gold)).c_str(), lx, y, 40, kWarn);
     }
-    y += 32;
+    y += 48;
     drawTextF(("Wave: " + std::to_string(snap.waveIndex + 1) + "/3").c_str(),
               lx, y, 30, kMuted);
-    y += 28;
+    y += 40;
     drawTextF(("Level: " + std::to_string(snap.levelIndex) + "/4").c_str(),
               lx, y, 30, kMuted);
-    y += 40;
+    y += 50;
 
     DrawLine(x + 13, y, x + w - 13, y, kPanelLine);
     y += 18;
@@ -804,45 +868,6 @@ void drawUI(const GameSnapshot& snap, int gold, TowerKind selectedTower,
     bool canBuild = (snap.phase == GamePhase::Build ||
                      snap.phase == GamePhase::WaveRunning ||
                      snap.phase == GamePhase::WaveCleared);
-
-    if (canBuild) {
-        drawTextF("Towers", lx, y, 30, kInk);
-        y += 42;
-
-        TowerKind kinds[] = {TowerKind::Coffee, TowerKind::AI, TowerKind::Library,
-                            TowerKind::Class, TowerKind::Bilibili};
-        for (int i = 0; i < 5; ++i) {
-            const TowerSpec spec = GameEngine::towerSpec(kinds[i]);
-            Rectangle btn = {static_cast<float>(lx), static_cast<float>(y),
-                             static_cast<float>(w - 39), 54.0f};
-            bool hover = CheckCollisionPointRec(GetMousePosition(), btn);
-            bool sel = (selectedTower == kinds[i]);
-
-            Color bg = sel ? kAccentSoft
-                          : (hover ? Color{239, 244, 238, 255} : Color{250, 251, 248, 255});
-            DrawRectangleRounded(btn, 0.3f, 8, bg);
-            DrawRectangleRoundedLines(btn, 0.3f, 8, 1.0f, sel ? kAccent : kPanelLine);
-
-            if (tm) {
-                const char* sprite = towerSpriteName(spec.name);
-                drawSprite(*tm, sprite, static_cast<float>(lx + 27), static_cast<float>(y + 27),
-                           0.0224f, (gold >= spec.cost) ? WHITE : Color{140, 145, 140, 180});
-                std::string label = std::string("  ") + spec.name + "  " + std::to_string(spec.cost) + "g";
-                drawTextF(label.c_str(), lx + 45, y + 13, 26, (gold >= spec.cost) ? kInk : kMuted);
-            } else {
-                Color tc = towerColor(spec.name);
-                DrawCircle(lx + 24, y + 27, 10, tc);
-                std::string label = std::string(spec.name) + "  " + std::to_string(spec.cost) + "g";
-                drawTextF(label.c_str(), lx + 45, y + 13, 26, (gold >= spec.cost) ? tc : kMuted);
-            }
-
-            y += 60;
-        }
-
-        y += 15;
-        DrawLine(x + 13, y, x + w - 13, y, kPanelLine);
-        y += 18;
-    }
 
     if (canBuild) {
         Rectangle exBtn = {static_cast<float>(lx), static_cast<float>(y),
@@ -950,7 +975,7 @@ void drawUI(const GameSnapshot& snap, int gold, TowerKind selectedTower,
 
     EndScissorMode();
 
-    constexpr float kPanelContentHeight = 1615.0f;
+    constexpr float kPanelContentHeight = 1120.0f;
     if (kPanelContentHeight > SCREEN_HEIGHT) {
         const float trackX = static_cast<float>(x + w - 10);
         const float trackY = 8.0f;

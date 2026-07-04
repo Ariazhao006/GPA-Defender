@@ -18,7 +18,7 @@ class TextureManager;
 
 constexpr int TILE_SIZE = 104;
 constexpr int MAP_OFFSET_X = 59;
-constexpr int MAP_OFFSET_Y = 59;
+constexpr int MAP_OFFSET_Y = 210;
 constexpr int MAP_COLS = 12;
 constexpr int MAP_ROWS = 10;
 constexpr int UI_PANEL_X = 1346;
@@ -51,6 +51,7 @@ Rectangle questionnaireOptionRect(std::size_t index);
 Rectangle astiContinueRect();
 Rectangle gameOverOptionRect(int option);
 Rectangle victoryOptionRect(int option, bool hasNextLevel);
+Rectangle seedBarTowerRect(int index);
 
 // Helper: pick tile source rect from the map tilesheet (17x12 grid of 64x64)
 Rectangle mapTileSrc(int col, int row);
@@ -80,6 +81,7 @@ void drawChests(const std::vector<Chest>& chests,
 void drawUI(const GameSnapshot& snap, int gold, TowerKind selectedTower,
             bool exerciseMode, int selectedTowerIndex, bool showExerciseGuide,
             float timeScale, float panelScrollOffset, const TextureManager* tm);
+void drawSeedBar(int gold, TowerKind selectedTower, const TextureManager* tm);
 void drawMainMenu(const TextureManager* tm = nullptr, bool hasSavedGame = false);
 void drawLevelSelect(int unlockedLevel, int hoveredLevel,
                      const TextureManager* tm = nullptr);
