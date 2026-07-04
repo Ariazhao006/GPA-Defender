@@ -58,6 +58,37 @@ struct GameSnapshot {
     int spawnedEnemies = 0;
     int totalWaveSpawns = 0;
     float waveTimeSec = 0.0f;
+    int baseHp = 100;
+    int baseMaxHp = 100;
+};
+
+struct SavedTowerState {
+    TowerKind kind = TowerKind::Coffee;
+    Vector2D position{0.0f, 0.0f};
+    Vector2D fireDirection{1.0f, 0.0f};
+    int aiLevel = 1;
+    float cooldown = 0.0f;
+};
+
+struct SavedEngineState {
+    GamePhase phase = GamePhase::Build;
+    int gold = 100;
+    int baseHp = 100;
+    int waveIndex = -1;
+    bool exerciseMode = false;
+    float timeScale = 1.0f;
+
+    int currentAcademic = 0;
+    int currentPhysical = 0;
+    int currentMental = 0;
+    int currentConnection = 0;
+    int thresholdAcademic = 0;
+    int thresholdPhysical = 0;
+    int thresholdMental = 0;
+    int thresholdConnection = 0;
+    std::vector<std::string> astiTags;
+
+    std::vector<SavedTowerState> towers;
 };
 
 class GameEngine {
@@ -65,12 +96,14 @@ private:
     PlayerStats player;
     int gold = 100;
     int startingGold = 100;
+    int baseHp = 100;
     int levelIndex = 0;
     int waveIndex = -1;
     GamePhase phase = GamePhase::PreGame;
 
     float physicalDecayTimer = 0.0f;
-    float physicalRecoveryTimer = 0.0f;
+    float gpaRecoveryTimer = 0.0f;
+    float gpaRecoveryCarryHp = 0.0f;
     float timeScale = 1.0f;
 
     std::vector<WaveDefinition> waves;
@@ -78,7 +111,7 @@ private:
     std::vector<std::unique_ptr<DefenseTower>> towers;
 
     bool canBuildNow() const;
-    void updatePhysicalStat(float deltaTime);
+    void updateSurvivalTimers(float deltaTime);
     std::unique_ptr<DefenseTower> createTower(TowerKind kind) const;
 
 public:
@@ -89,7 +122,7 @@ public:
 
     void initializeFromAsti(const AstiResult& result);
     bool startWave();
-    void update(float deltaTime);
+    void update(float deltaTime, const std::vector<Enemy*>& extraTargets = {});
 
     bool trySpend(int cost);
     void addGold(int amount);
@@ -115,6 +148,9 @@ public:
     const PlayerStats& getPlayerStats() const { return player; }
     const std::vector<std::unique_ptr<DefenseTower>>& getTowers() const { return towers; }
     const WaveManager& getWaveManager() const { return waveManager; }
+
+    SavedEngineState captureSaveState() const;
+    void restoreSaveState(const SavedEngineState& state);
 
     static const char* phaseName(GamePhase value);
     static TowerSpec towerSpec(TowerKind kind);

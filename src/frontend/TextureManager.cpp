@@ -1,4 +1,5 @@
 #include "frontend/TextureManager.h"
+#include "frontend/AssetPaths.h"
 #include "raylib.h"
 
 namespace frontend {
@@ -9,11 +10,17 @@ void TextureManager::addSprite(const std::string& name, int x, int y, int w, int
 	                  static_cast<float>(w), static_cast<float>(h)}, tex};
 }
 
-void TextureManager::loadAiTexture(const std::string& name, const std::string& path) {
-	Texture2D tex = LoadTexture(path.c_str());
+bool TextureManager::loadAiTexture(const std::string& name, const std::string& path) {
+	const std::string resolvedPath = resolveAssetPath(path);
+	Texture2D tex = LoadTexture(resolvedPath.c_str());
+	if (tex.id == 0) {
+		TraceLog(LOG_WARNING, "Failed to load texture: %s", resolvedPath.c_str());
+		return false;
+	}
 	aiTextures.push_back(tex);
 	// Register the full image as a sprite
 	addSprite(name, 0, 0, tex.width, tex.height, &aiTextures.back());
+	return true;
 }
 
 const SpriteDef* TextureManager::getSprite(const std::string& name) const {
@@ -22,10 +29,55 @@ const SpriteDef* TextureManager::getSprite(const std::string& name) const {
 }
 
 bool TextureManager::loadAll() {
-	mapTilesheet = LoadTexture(
+	bool ok = true;
+
+	const std::string mapTilesheetPath = resolveAssetPath(
 	    "assets/image/kenney_map-pack/Tilesheet/mapPack_tilesheet.png");
-	charSpritesheet = LoadTexture(
+	mapTilesheet = LoadTexture(mapTilesheetPath.c_str());
+	if (mapTilesheet.id == 0) {
+		TraceLog(LOG_WARNING, "Failed to load texture: %s", mapTilesheetPath.c_str());
+		ok = false;
+	}
+
+	const std::string charSpritesheetPath = resolveAssetPath(
 	    "assets/image/kenney_shape-characters/Spritesheet/spritesheet_default.png");
+	charSpritesheet = LoadTexture(charSpritesheetPath.c_str());
+	if (charSpritesheet.id == 0) {
+		TraceLog(LOG_WARNING, "Failed to load texture: %s", charSpritesheetPath.c_str());
+		ok = false;
+	}
+
+	const std::string highlandTile017Path = resolveAssetPath(
+	    "assets/image/kenney_map-pack/PNG/mapTile_017.png");
+	highlandTile017 = LoadTexture(highlandTile017Path.c_str());
+	if (highlandTile017.id == 0) {
+		TraceLog(LOG_WARNING, "Failed to load texture: %s", highlandTile017Path.c_str());
+		ok = false;
+	}
+
+	const std::string highlandTile015Path = resolveAssetPath(
+	    "assets/image/kenney_map-pack/PNG/mapTile_015.png");
+	highlandTile015 = LoadTexture(highlandTile015Path.c_str());
+	if (highlandTile015.id == 0) {
+		TraceLog(LOG_WARNING, "Failed to load texture: %s", highlandTile015Path.c_str());
+		ok = false;
+	}
+
+	const std::string pathTilePath = resolveAssetPath(
+	    "assets/image/kenney_map-pack/PNG/mapTile_010.png");
+	pathTile = LoadTexture(pathTilePath.c_str());
+	if (pathTile.id == 0) {
+		TraceLog(LOG_WARNING, "Failed to load texture: %s", pathTilePath.c_str());
+		ok = false;
+	}
+
+	const std::string spawnTilePath = resolveAssetPath(
+	    "assets/image/kenney_shape-characters/PNG/Default/tile_exclamation.png");
+	spawnTile = LoadTexture(spawnTilePath.c_str());
+	if (spawnTile.id == 0) {
+		TraceLog(LOG_WARNING, "Failed to load texture: %s", spawnTilePath.c_str());
+		ok = false;
+	}
 
 	// --- Character body sprites (80x80 each) ---
 	addSprite("blue_body_circle",    0,   147, 80, 80, &charSpritesheet);
@@ -71,29 +123,34 @@ bool TextureManager::loadAll() {
 	addSprite("tile_bg_grass",455, 504, 32, 18, &charSpritesheet);
 
 	// --- AI-generated custom tower/enemy textures ---
-	aiTextures.reserve(14);  // prevent reallocation invalidating SpriteDef pointers
+	aiTextures.reserve(15);  // prevent reallocation invalidating SpriteDef pointers
 	const char* aiDir = "assets/image/no_background/";
-	loadAiTexture("ai_coffee",        std::string(aiDir) + "coffee.png");
-	loadAiTexture("ai_ai",            std::string(aiDir) + "ai.png");
-	loadAiTexture("ai_library",       std::string(aiDir) + "library.png");
-	loadAiTexture("ai_class",         std::string(aiDir) + "class.png");
-	loadAiTexture("ai_bilibili",      std::string(aiDir) + "bilibili.png");
-	loadAiTexture("ai_boss",          std::string(aiDir) + "boss.png");
-	loadAiTexture("ai_calculus",      std::string(aiDir) + "calculus.png");
-	loadAiTexture("ai_research",      std::string(aiDir) + "research.png");
-	loadAiTexture("ai_social",        std::string(aiDir) + "social_contact.png");
-	loadAiTexture("ai_morning",       std::string(aiDir) + "morning_eight.png");
-	loadAiTexture("ai_group",         std::string(aiDir) + "group_work.png");
-	loadAiTexture("ai_video",         std::string(aiDir) + "short_vedio.png");
-	loadAiTexture("ai_exam_outline",  std::string(aiDir) + "exam_outline.png");
-	loadAiTexture("ai_peer_pressure", std::string(aiDir) + "peer_pressure.png");
+	ok = loadAiTexture("ai_coffee",        std::string(aiDir) + "coffee.png") && ok;
+	ok = loadAiTexture("ai_ai",            std::string(aiDir) + "ai.png") && ok;
+	ok = loadAiTexture("ai_library",       std::string(aiDir) + "library.png") && ok;
+	ok = loadAiTexture("ai_class",         std::string(aiDir) + "class.png") && ok;
+	ok = loadAiTexture("ai_bilibili",      std::string(aiDir) + "bilibili.png") && ok;
+	ok = loadAiTexture("ai_boss",          std::string(aiDir) + "boss.png") && ok;
+	ok = loadAiTexture("ai_calculus",      std::string(aiDir) + "calculus.png") && ok;
+	ok = loadAiTexture("ai_research",      std::string(aiDir) + "research.png") && ok;
+	ok = loadAiTexture("ai_social",        std::string(aiDir) + "social_contact.png") && ok;
+	ok = loadAiTexture("ai_morning",       std::string(aiDir) + "morning_eight.png") && ok;
+	ok = loadAiTexture("ai_group",         std::string(aiDir) + "group_work.png") && ok;
+	ok = loadAiTexture("ai_video",         std::string(aiDir) + "short_vedio.png") && ok;
+	ok = loadAiTexture("ai_exam_outline",  std::string(aiDir) + "exam_outline.png") && ok;
+	ok = loadAiTexture("ai_peer_pressure", std::string(aiDir) + "peer_pressure.png") && ok;
+	ok = loadAiTexture("chest_case",       std::string(aiDir) + "case.png") && ok;
 
-	return true;
+	return ok;
 }
 
 void TextureManager::unloadAll() {
 	UnloadTexture(mapTilesheet);
 	UnloadTexture(charSpritesheet);
+	UnloadTexture(highlandTile017);
+	UnloadTexture(highlandTile015);
+	UnloadTexture(pathTile);
+	UnloadTexture(spawnTile);
 	for (auto& tex : aiTextures) {
 		UnloadTexture(tex);
 	}

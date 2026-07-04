@@ -25,15 +25,15 @@ namespace {
 Questionnaire::Questionnaire() {
     questions.clear();
 
-    // Q0 运动频率（+ =1, ++=2, ++++=4, --=2 扣分取负）
+    // Q0 exercise frequency
     {
         Question q;
-        q.prompt = "你每周运动的频率是？ "; // 注意末尾加了空格，下同
+        q.prompt = "How often do you exercise each week? ";
         q.options = {
-            { "每天。一天不运动我浑身难受 ", { { Indicator::Physical, +4 } } },
-            { "3-4次。有空就动 ", { { Indicator::Physical, +2 } } },
-            { "1-2次。差不多动一下 ", { { Indicator::Physical, +1 } } },
-            { "无。运动不了一点 ", { { Indicator::Physical, -2 } } },
+            { "Every day. I feel off if I skip it. ", { { Indicator::Physical, +4 } } },
+            { "Three or four times. I move when I can. ", { { Indicator::Physical, +2 } } },
+            { "Once or twice. Just enough to count. ", { { Indicator::Physical, +1 } } },
+            { "Almost never. Exercise is not happening. ", { { Indicator::Physical, -2 } } },
         };
         questions.push_back(std::move(q));
     }
@@ -41,10 +41,10 @@ Questionnaire::Questionnaire() {
     // Q1 DDL
     {
         Question q;
-        q.prompt = "如果这一段时间，你有非常多ddl，非常多要做的事情，你的内心os： ";
+        q.prompt = "When deadlines pile up and everything is due, your inner voice says: ";
         q.options = {
-            { "啊啊啊，那我要赶快开始做，努力做，拼命做 ", { { Indicator::Academic, +2 } } },
-            { "压力这么大，那我摆一会好了，手机启动 ", { { Indicator::Mental, +2 } } },
+            { "Start now. Work hard. Keep pushing. ", { { Indicator::Academic, +2 } } },
+            { "This is too much. I need a short phone break. ", { { Indicator::Mental, +2 } } },
         };
         questions.push_back(std::move(q));
     }
@@ -52,11 +52,11 @@ Questionnaire::Questionnaire() {
     // Q2 未来与成绩
     {
         Question q;
-        q.prompt = "上大学后，你想到未来，又想到自己的成绩： ";
+        q.prompt = "When you think about college, the future, and your grades: ";
         q.options = {
-            { "我要去更好的学校，拼搏四年，更上一层楼！ ", { { Indicator::Academic, +2 } } },
-            { "其实到头来都一样，认真学学就好 ", { { Indicator::Mental, +2 } } },
-            { "都寒窗苦读12年了，上大学还不玩，更待何时 ",
+            { "I want a stronger next step, so I will push for four years. ", { { Indicator::Academic, +2 } } },
+            { "It will work out. I just need to study steadily. ", { { Indicator::Mental, +2 } } },
+            { "After twelve years of grind, college should have some fun. ",
               { { Indicator::Mental, +2 }, { Indicator::Academic, -2 } } },
         };
         questions.push_back(std::move(q));
@@ -65,12 +65,12 @@ Questionnaire::Questionnaire() {
     // Q3 日常生活
     {
         Question q;
-        q.prompt = "日常生活中，你： ";
+        q.prompt = "In daily life, you usually: ";
         q.options = {
-            { "我是友宝女，我需要和很多朋友贴贴 ", { { Indicator::Connection, +4 } } },
-            { "我需要一定的私人空间，但如果一直没有朋友和我说话，我也会心里空唠唠的 ",
+            { "Need plenty of time with friends. ", { { Indicator::Connection, +4 } } },
+            { "Need private space, but still feel empty with no one around. ",
               { { Indicator::Connection, +1 } } },
-            { "额啊，我不要社交，solo trip才是最好的地球online打开方式 ",
+            { "Prefer solo mode. Less social noise is better. ",
               { { Indicator::Connection, -2 } } },
         };
         questions.push_back(std::move(q));
@@ -79,10 +79,10 @@ Questionnaire::Questionnaire() {
     // Q4 受委屈
     {
         Question q;
-        q.prompt = "当你受委屈时： ";
+        q.prompt = "When you feel unfairly blamed: ";
         q.options = {
-            { "唉，是不是我哪里做的不够好，好伤心 ", { { Indicator::Mental, +2 } } },
-            { "我已经做得很好了，他们指责我是他们的问题 ", { { Indicator::Mental, -2 } } },
+            { "Maybe I did something wrong. That hurts. ", { { Indicator::Mental, +2 } } },
+            { "I did my part. Their blame is their problem. ", { { Indicator::Mental, -2 } } },
         };
         questions.push_back(std::move(q));
     }
@@ -90,12 +90,12 @@ Questionnaire::Questionnaire() {
     // Q5 期末前一晚
     {
         Question q;
-        q.prompt = "期末考试前一晚，你更可能： ";
+        q.prompt = "The night before finals, you are more likely to: ";
         q.options = {
-            { "继续冲刺学习 ", { { Indicator::Academic, +2 } } },
-            { "保证睡眠，不熬通宵 ", { { Indicator::Physical, +2 } } },
-            { "和朋友互相打气 ", { { Indicator::Connection, +2 } } },
-            { "看会儿视频放空 ", { { Indicator::Mental, +2 } } },
+            { "Keep studying for one last push. ", { { Indicator::Academic, +2 } } },
+            { "Protect sleep and avoid an all-nighter. ", { { Indicator::Physical, +2 } } },
+            { "Encourage friends and get encouraged back. ", { { Indicator::Connection, +2 } } },
+            { "Watch something and clear your head. ", { { Indicator::Mental, +2 } } },
         };
         questions.push_back(std::move(q));
     }
@@ -103,12 +103,12 @@ Questionnaire::Questionnaire() {
     // Q6 安排被打乱
     {
         Question q;
-        q.prompt = "一天安排被打乱时： ";
+        q.prompt = "When your whole day gets disrupted: ";
         q.options = {
-            { "立刻重新安排计划，不能浪费时间 ", { { Indicator::Academic, +2 } } },
-            { "事已至此，去跑步（运动）得了 ", { { Indicator::Physical, +2 } } },
-            { "找人吐槽，顺便聊聊天 ", { { Indicator::Connection, +2 } } },
-            { "都被打乱了，那先休息吧 ", { { Indicator::Mental, +2 } } },
+            { "Reschedule immediately. No time can be wasted. ", { { Indicator::Academic, +2 } } },
+            { "Since it is already broken, go exercise. ", { { Indicator::Physical, +2 } } },
+            { "Find someone to vent to and chat with. ", { { Indicator::Connection, +2 } } },
+            { "The plan is broken, so take a real break first. ", { { Indicator::Mental, +2 } } },
         };
         questions.push_back(std::move(q));
     }
@@ -116,12 +116,12 @@ Questionnaire::Questionnaire() {
     // Q7 连续低迷一周
     {
         Question q;
-        q.prompt = "当你连续一周状态都很低迷时： ";
+        q.prompt = "When you feel low for a whole week: ";
         q.options = {
-            { "增加学习投入，找到成就感 ", { { Indicator::Academic, +2 } } },
-            { "多和朋友见面 ", { { Indicator::Connection, +2 } } },
-            { "规律锻炼和作息 ", { { Indicator::Physical, +2 } } },
-            { "给自己放假，放空 ", { { Indicator::Mental, +2 } } },
+            { "Study more and rebuild a sense of progress. ", { { Indicator::Academic, +2 } } },
+            { "Spend more time with friends. ", { { Indicator::Connection, +2 } } },
+            { "Rebuild routine through exercise and sleep. ", { { Indicator::Physical, +2 } } },
+            { "Give yourself a break and reset. ", { { Indicator::Mental, +2 } } },
         };
         questions.push_back(std::move(q));
     }
@@ -129,14 +129,14 @@ Questionnaire::Questionnaire() {
     // Q8 低分作业
     {
         Question q;
-        q.prompt = "当你拿到一份比预期低的作业分数： ";
+        q.prompt = "When an assignment score is lower than expected: ";
         q.options = {
-            { "立刻分析错题，下次拉回来 ", { { Indicator::Academic, +2 } } },
-            { "出去跑两圈把情绪甩掉 ",
+            { "Review mistakes immediately and recover next time. ", { { Indicator::Academic, +2 } } },
+            { "Run it off and clear the frustration. ",
               { { Indicator::Physical, +2 }, { Indicator::Mental, +2 } } },
-            { "找朋友吐槽一下午，再说 ",
+            { "Complain to friends for a while, then deal with it. ",
               { { Indicator::Connection, +2 }, { Indicator::Mental, +2 } } },
-            { "告诉自己一次而已，别 PUA 自己 ", { { Indicator::Mental, +2 } } },
+            { "Tell yourself it is one score, not your whole identity. ", { { Indicator::Mental, +2 } } },
         };
         questions.push_back(std::move(q));
     }
@@ -174,10 +174,10 @@ AstiResult Questionnaire::score(const std::vector<int>& answers) const {
 
     const int maxRaw = std::max({ r.rawAcademic, r.rawPhysical, r.rawMental, r.rawConnection });
 
-    if (r.rawAcademic == maxRaw) r.tags.push_back("极限卷王 "); // 加了空格
-    if (r.rawMental == maxRaw) r.tags.push_back("随缘活着 "); // 加了空格
-    if (r.rawPhysical == maxRaw) r.tags.push_back("健身狂魔 "); // 加了空格
-    if (r.rawConnection == maxRaw) r.tags.push_back("社交达人 "); // 加了空格
+    if (r.rawAcademic == maxRaw) r.tags.push_back("Academic Grinder ");
+    if (r.rawMental == maxRaw) r.tags.push_back("Balanced Survivor ");
+    if (r.rawPhysical == maxRaw) r.tags.push_back("Fitness Defender ");
+    if (r.rawConnection == maxRaw) r.tags.push_back("Social Anchor ");
 
     return r;
 }

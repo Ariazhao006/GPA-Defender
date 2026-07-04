@@ -1,12 +1,17 @@
 ﻿#include "gpa_defender/GameEngine.h"
 
+#include <algorithm>
 #include <utility>
 
 namespace {
 
 constexpr float kPhysicalDecayIntervalSec = 5.0f;
-constexpr float kPhysicalRecoveryIntervalSec = 3.0f;
+constexpr float kGpaRecoveryIntervalSec = 5.0f;
+constexpr float kGpaRecoveryPerTick = 2.5f;
 constexpr float kExerciseTowerCadenceScale = 0.65f;
+constexpr int kBaseMaxHp = 100;
+constexpr int kBaseDamagePerLeak = 10;
+constexpr float kTowerRangeScale = 1.5f;
 
 } // namespace
 
@@ -25,11 +30,13 @@ void GameEngine::initializeFromAsti(const AstiResult& result) {
     player.applyAstiResult(result);
     player.setExerciseMode(false);
     gold = startingGold;
+    baseHp = kBaseMaxHp;
     levelIndex = 0;
     waveIndex = -1;
     phase = GamePhase::Build;
     physicalDecayTimer = 0.0f;
-    physicalRecoveryTimer = 0.0f;
+    gpaRecoveryTimer = 0.0f;
+    gpaRecoveryCarryHp = 0.0f;
     towers.clear();
     waveManager.reset();
 }
@@ -54,26 +61,35 @@ bool GameEngine::startWave() {
     return true;
 }
 
-void GameEngine::update(float deltaTime) {
+void GameEngine::update(float deltaTime, const std::vector<Enemy*>& extraTargets) {
     if (deltaTime < 0.0f) return;
     if (phase != GamePhase::WaveRunning) return;
 
     float scaledDelta = deltaTime * timeScale;
 
-    updatePhysicalStat(scaledDelta);
+    updateSurvivalTimers(scaledDelta);
     if (!player.isAlive()) {
         phase = GamePhase::GameOver;
         return;
     }
 
     waveManager.updateSpawning(scaledDelta);
-    waveManager.updateEnemies(scaledDelta, player);
+    const int leakedEnemies = waveManager.updateEnemies(scaledDelta);
+    if (leakedEnemies > 0) {
+        baseHp -= leakedEnemies * kBaseDamagePerLeak;
+        if (baseHp < 0) baseHp = 0;
+    }
     if (!player.isAlive()) {
+        phase = GamePhase::GameOver;
+        return;
+    }
+    if (baseHp <= 0) {
         phase = GamePhase::GameOver;
         return;
     }
 
     std::vector<Enemy*> liveEnemies = waveManager.getLiveEnemies();
+    liveEnemies.insert(liveEnemies.end(), extraTargets.begin(), extraTargets.end());
     std::vector<bool> aliveBeforeTowerUpdate = waveManager.captureAliveStates();
     const float towerDeltaTime = player.getExerciseMode()
         ? scaledDelta * kExerciseTowerCadenceScale
@@ -163,7 +179,8 @@ bool GameEngine::tryRotateBilibiliTower(std::size_t towerIndex, int goldCost) {
 void GameEngine::setExerciseMode(bool on) {
     player.setExerciseMode(on);
     physicalDecayTimer = 0.0f;
-    physicalRecoveryTimer = 0.0f;
+    gpaRecoveryTimer = 0.0f;
+    gpaRecoveryCarryHp = 0.0f;
 }
 
 void GameEngine::setTimeScale(float scale) {
@@ -198,26 +215,137 @@ GameSnapshot GameEngine::getSnapshot() const {
     snapshot.spawnedEnemies = waveManager.getSpawnedCount();
     snapshot.totalWaveSpawns = waveManager.getTotalSpawnCount();
     snapshot.waveTimeSec = waveManager.getElapsedSec();
+    snapshot.baseHp = baseHp;
+    snapshot.baseMaxHp = kBaseMaxHp;
     return snapshot;
 }
 
-bool GameEngine::canBuildNow() const {
-    return phase == GamePhase::Build || phase == GamePhase::WaveCleared;
+SavedEngineState GameEngine::captureSaveState() const {
+    SavedEngineState state;
+    state.phase = phase;
+    state.waveIndex = waveIndex;
+
+    if (phase == GamePhase::WaveRunning) {
+        state.phase = (waveIndex <= 0) ? GamePhase::Build : GamePhase::WaveCleared;
+        state.waveIndex = waveIndex - 1;
+    } else if (phase == GamePhase::PreGame || phase == GamePhase::GameOver || phase == GamePhase::Victory) {
+        state.phase = GamePhase::Build;
+        state.waveIndex = -1;
+    }
+
+    state.gold = gold;
+    state.baseHp = baseHp;
+    state.exerciseMode = player.getExerciseMode();
+    state.timeScale = timeScale;
+    state.currentAcademic = player.getCurrentAcademic();
+    state.currentPhysical = player.getCurrentPhysical();
+    state.currentMental = player.getCurrentMental();
+    state.currentConnection = player.getCurrentConnection();
+    state.thresholdAcademic = player.getThresholdAcademic();
+    state.thresholdPhysical = player.getThresholdPhysical();
+    state.thresholdMental = player.getThresholdMental();
+    state.thresholdConnection = player.getThresholdConnection();
+    state.astiTags = player.getAstiTags();
+
+    for (const std::unique_ptr<DefenseTower>& tower : towers) {
+        if (tower == nullptr) continue;
+        SavedTowerState towerState;
+        towerState.position = tower->getPosition();
+        towerState.cooldown = tower->getCooldownTimer();
+        if (dynamic_cast<const CoffeeTower*>(tower.get()) != nullptr) {
+            towerState.kind = TowerKind::Coffee;
+        } else if (const AITower* ai = dynamic_cast<const AITower*>(tower.get())) {
+            towerState.kind = TowerKind::AI;
+            towerState.aiLevel = ai->getLevel();
+        } else if (dynamic_cast<const LibraryTower*>(tower.get()) != nullptr) {
+            towerState.kind = TowerKind::Library;
+        } else if (dynamic_cast<const ClassTower*>(tower.get()) != nullptr) {
+            towerState.kind = TowerKind::Class;
+        } else if (const BilibiliTower* bilibili = dynamic_cast<const BilibiliTower*>(tower.get())) {
+            towerState.kind = TowerKind::Bilibili;
+            towerState.fireDirection = bilibili->getFireDirection();
+        }
+        state.towers.push_back(towerState);
+    }
+
+    return state;
 }
 
-void GameEngine::updatePhysicalStat(float deltaTime) {
+void GameEngine::restoreSaveState(const SavedEngineState& state) {
+    gold = std::max(0, state.gold);
+    baseHp = std::max(0, std::min(kBaseMaxHp, state.baseHp));
+    waveIndex = state.waveIndex;
+    if (waveIndex < -1) waveIndex = -1;
+    if (waveIndex >= static_cast<int>(waves.size())) {
+        waveIndex = static_cast<int>(waves.size()) - 1;
+    }
+
+    phase = state.phase;
+    if (phase == GamePhase::PreGame || phase == GamePhase::WaveRunning
+        || phase == GamePhase::GameOver || phase == GamePhase::Victory) {
+        phase = (waveIndex < 0) ? GamePhase::Build : GamePhase::WaveCleared;
+    }
+
+    player.restoreForSave(
+        state.currentAcademic,
+        state.currentPhysical,
+        state.currentMental,
+        state.currentConnection,
+        state.thresholdAcademic,
+        state.thresholdPhysical,
+        state.thresholdMental,
+        state.thresholdConnection,
+        state.astiTags,
+        state.exerciseMode);
+
+    setTimeScale(state.timeScale);
+    physicalDecayTimer = 0.0f;
+    gpaRecoveryTimer = 0.0f;
+    gpaRecoveryCarryHp = 0.0f;
+    waveManager.reset();
+    towers.clear();
+
+    for (const SavedTowerState& towerState : state.towers) {
+        std::unique_ptr<DefenseTower> tower = createTower(towerState.kind);
+        if (AITower* ai = dynamic_cast<AITower*>(tower.get())) {
+            ai->restoreLevelForSave(towerState.aiLevel);
+        }
+        if (BilibiliTower* bilibili = dynamic_cast<BilibiliTower*>(tower.get())) {
+            bilibili->setFireDirection(towerState.fireDirection);
+        }
+        tower->restoreBaseState(towerState.position, towerState.cooldown);
+        towers.push_back(std::move(tower));
+    }
+}
+
+bool GameEngine::canBuildNow() const {
+    return phase == GamePhase::Build || phase == GamePhase::WaveRunning
+        || phase == GamePhase::WaveCleared;
+}
+
+void GameEngine::updateSurvivalTimers(float deltaTime) {
     if (player.getExerciseMode()) {
-        physicalRecoveryTimer += deltaTime;
+        gpaRecoveryTimer += deltaTime;
         physicalDecayTimer = 0.0f;
 
-        while (physicalRecoveryTimer >= kPhysicalRecoveryIntervalSec) {
-            player.changePhysical(+1);
-            physicalRecoveryTimer -= kPhysicalRecoveryIntervalSec;
+        while (gpaRecoveryTimer >= kGpaRecoveryIntervalSec) {
+            gpaRecoveryCarryHp += kGpaRecoveryPerTick;
+            int heal = static_cast<int>(gpaRecoveryCarryHp);
+            if (heal > 0) {
+                baseHp += heal;
+                if (baseHp > kBaseMaxHp) baseHp = kBaseMaxHp;
+                gpaRecoveryCarryHp -= static_cast<float>(heal);
+                if (baseHp >= kBaseMaxHp) {
+                    gpaRecoveryCarryHp = 0.0f;
+                }
+            }
+            gpaRecoveryTimer -= kGpaRecoveryIntervalSec;
         }
     }
     else {
         physicalDecayTimer += deltaTime;
-        physicalRecoveryTimer = 0.0f;
+        gpaRecoveryTimer = 0.0f;
+        gpaRecoveryCarryHp = 0.0f;
 
         while (physicalDecayTimer >= kPhysicalDecayIntervalSec) {
             player.changePhysical(-1);
@@ -246,15 +374,15 @@ std::unique_ptr<DefenseTower> GameEngine::createTower(TowerKind kind) const {
 const char* GameEngine::phaseName(GamePhase value) {
     switch (value) {
     case GamePhase::PreGame:
-        return "PreGame";
+        return "Pre Game";
     case GamePhase::Build:
-        return "Build";
+        return "Build Phase";
     case GamePhase::WaveRunning:
-        return "WaveRunning";
+        return "Wave Running";
     case GamePhase::WaveCleared:
-        return "WaveCleared";
+        return "Wave Cleared";
     case GamePhase::GameOver:
-        return "GameOver";
+        return "Game Over";
     case GamePhase::Victory:
         return "Victory";
     }
@@ -265,18 +393,18 @@ const char* GameEngine::phaseName(GamePhase value) {
 TowerSpec GameEngine::towerSpec(TowerKind kind) {
     switch (kind) {
     case TowerKind::Coffee:
-        return {kind, "Coffee", "Small range, huge burst damage", 50, 92.0f};
+        return {kind, "Coffee", "Small range, huge burst damage", 50, 92.0f * kTowerRangeScale};
     case TowerKind::AI:
-        return {kind, "AI", "360 sweep, hits all in range (upgradeable)", 100, 205.0f};
+        return {kind, "AI", "360 sweep, hits all in range (upgradeable)", 100, 205.0f * kTowerRangeScale};
     case TowerKind::Library:
-        return {kind, "Library", "Slows enemies, no direct damage", 120, 228.0f};
+        return {kind, "Library", "Slows enemies, no direct damage", 120, 228.0f * kTowerRangeScale};
     case TowerKind::Class:
-        return {kind, "Class", "Heavy single hit, long cooldown", 80, 172.0f};
+        return {kind, "Class", "Heavy single hit, long cooldown", 80, 172.0f * kTowerRangeScale};
     case TowerKind::Bilibili:
-        return {kind, "Bilibili", "Long-range beam, configurable direction", 65, 305.0f};
+        return {kind, "Bilibili", "Long-range beam, configurable direction", 65, 305.0f * kTowerRangeScale};
     }
 
-    return {TowerKind::Coffee, "Coffee", "Small range, huge burst damage", 50, 92.0f};
+    return {TowerKind::Coffee, "Coffee", "Small range, huge burst damage", 50, 92.0f * kTowerRangeScale};
 }
 
 std::vector<WaveDefinition> GameEngine::defaultWaves() {

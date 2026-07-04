@@ -10,12 +10,24 @@
 #include "frontend/ChestManager.h"
 #include "frontend/TextureManager.h"
 #include "raylib.h"
+#include <array>
 #include <vector>
 #include <string>
 
 namespace frontend {
 
-enum class Screen { MainMenu, Questionnaire, AstiSummary, LevelSelect, Game, GameOver, Victory };
+enum class Screen { MainMenu, SaveName, SaveSlots, Questionnaire, AstiSummary, LevelSelect, Game, GameOver, Victory };
+
+struct SaveSlotInfo {
+    bool occupied = false;
+    int slot = 0;
+    std::string name;
+    std::string timestamp;
+    int level = 1;
+    int unlockedLevel = 1;
+    int waveIndex = -1;
+    GamePhase phase = GamePhase::Build;
+};
 
 class GameFrontend {
 public:
@@ -36,6 +48,7 @@ private:
     bool showExerciseGuide = false;
     int hoveredRow = -1;
     int hoveredCol = -1;
+    float uiScrollOffset = 0.0f;
     Vector2D bilibiliDir{1.0f, 0.0f};
     int bilibiliDirIndex = 0;
 
@@ -47,8 +60,18 @@ private:
 
     int currentLevel = 1;           // 1-4 对应大一到大四
     int unlockedLevel = 1;
-    int gameOverMenuSelection = 0;  // 0 = 重试本关, 1 = 返回主菜单
-    int victoryMenuSelection = 0;   // 0 = 进入下一关/返回主菜单, 1 = 返回主菜单
+    int gameOverMenuSelection = 0;  // 0 = retry, 1 = level select, 2 = main menu
+    int victoryMenuSelection = 0;   // with next: 0 = next, 1 = level select, 2 = main menu
+    bool mouseClickBlockedUntilRelease = false;
+    bool savedGameAvailable = false;
+    int currentSaveSlot = -1;
+    int pendingOverwriteSlot = -1;
+    int saveSlotSelection = 0;
+    bool saveSlotsForNewGame = false;
+    std::string saveNameInput;
+    std::array<SaveSlotInfo, 5> saveSlots;
+    std::string statusBannerText;
+    float statusBannerTimer = 0.0f;
 
     ChestManager chestManager;
     TextureManager textureManager;
@@ -62,6 +85,8 @@ private:
     void startLevel(int level);
 
     void runMainMenu();
+    void runSaveName();
+    void runSaveSlots();
     void runQuestionnaire();
     void runAstiSummary();
     void runLevelSelect();
@@ -76,6 +101,21 @@ private:
 
     bool tryPlaceSelectedTower(int row, int col);
     const char* towerName(TowerKind kind) const;
+    bool primaryClickPressed() const;
+    void blockMouseClickUntilRelease();
+    void updateMouseClickBlock();
+    void showStatusBanner(const std::string& text);
+    void startNewGameFlow();
+    void returnToMainMenuWithSave();
+    void continueSavedGame();
+    void refreshSaveSlots();
+    bool writeCurrentSave();
+    bool loadSaveSlot(int slot);
+    int latestSaveSlot() const;
+    int firstEmptySaveSlot() const;
+    void beginNewSaveNaming(int overwriteSlot);
+    void drawSaveNameScreen();
+    void drawSaveSlotsScreen();
 };
 
 }  // namespace frontend

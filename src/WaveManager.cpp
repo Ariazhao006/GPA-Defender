@@ -53,13 +53,21 @@ void WaveManager::updateSpawning(float deltaTime) {
     }
 }
 
-void WaveManager::updateEnemies(float deltaTime, PlayerStats& player) {
-    if (!running) return;
+int WaveManager::updateEnemies(float deltaTime) {
+    if (!running) return 0;
+
+    int reachedBaseCount = 0;
     for (ManagedEnemy& managed : enemies) {
         if (managed.enemy != nullptr) {
-            managed.enemy->update(deltaTime, &player);
+            const bool hadReachedBase = managed.enemy->hasReachedBase();
+            managed.enemy->update(deltaTime, nullptr);
+            if (!hadReachedBase && managed.enemy->hasReachedBase()) {
+                ++reachedBaseCount;
+                managed.rewardClaimed = true;
+            }
         }
     }
+    return reachedBaseCount;
 }
 
 std::vector<Enemy*> WaveManager::getLiveEnemies() const {

@@ -7,6 +7,7 @@
 #include "gpa_defender/Questionnaire.h"
 #include "frontend/ChestManager.h"
 #include "raylib.h"
+#include <cstddef>
 #include <vector>
 #include <string>
 
@@ -41,6 +42,15 @@ const Font& getUiFont();
 int measureTextF(const char* text, int fontSize);
 void drawTextF(const char* text, int x, int y, int fontSize, Color color);
 
+Rectangle mainMenuStartRect();
+Rectangle mainMenuContinueRect();
+Rectangle mainMenuNewGameRect(bool hasSavedGame);
+Rectangle mainMenuSaveSlotsRect();
+Rectangle questionnaireOptionRect(std::size_t index);
+Rectangle astiContinueRect();
+Rectangle gameOverOptionRect(int option);
+Rectangle victoryOptionRect(int option, bool hasNextLevel);
+
 // Helper: pick tile source rect from the map tilesheet (17x12 grid of 64x64)
 Rectangle mapTileSrc(int col, int row);
 
@@ -56,6 +66,7 @@ void drawSprite(const TextureManager& tm, const char* name,
 // Pass nullptr for tm to fall back to geometric shapes.
 
 void drawMap(const Block& block, const TextureManager* tm = nullptr);
+void drawBaseHealth(const Block& block, int hp, int maxHp);
 void drawTower(const DefenseTower& tower, bool showRange, bool selected,
                const TextureManager* tm = nullptr);
 void drawTowers(const std::vector<std::unique_ptr<DefenseTower>>& towers,
@@ -67,8 +78,8 @@ void drawChests(const std::vector<Chest>& chests,
                 const TextureManager* tm = nullptr);
 void drawUI(const GameSnapshot& snap, int gold, TowerKind selectedTower,
             bool exerciseMode, int selectedTowerIndex, bool showExerciseGuide,
-            float timeScale, const TextureManager* tm);
-void drawMainMenu(const TextureManager* tm = nullptr);
+            float timeScale, float panelScrollOffset, const TextureManager* tm);
+void drawMainMenu(const TextureManager* tm = nullptr, bool hasSavedGame = false);
 void drawLevelSelect(int unlockedLevel, int hoveredLevel,
                      const TextureManager* tm = nullptr);
 void drawGameOver(int selection);

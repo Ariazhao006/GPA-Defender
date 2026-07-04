@@ -65,6 +65,11 @@ public:
     int getThresholdConnection() const { return thresholdConnection; }
 
     const std::vector<std::string>& getAstiTags() const { return astiTags; }
+
+    void restoreForSave(int academic, int physical, int mental, int connection,
+        int thresholdAcademicValue, int thresholdPhysicalValue,
+        int thresholdMentalValue, int thresholdConnectionValue,
+        std::vector<std::string> tags, bool exercise);
 };
 
 #endif // PLAYER_STATS_H

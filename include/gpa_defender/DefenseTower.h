@@ -67,6 +67,8 @@ public:
     int getDamage() const { return damage; }
     float getAttackInterval() const { return attackInterval; }
     bool isPlaced() const { return placed; }
+    float getCooldownTimer() const { return cooldownTimer; }
+    void restoreBaseState(const Vector2D& pos, float cooldown);
 };
 
 // --- Five concrete subclasses (Level 2 inheritance) ---
@@ -109,6 +111,7 @@ public:
 
     int getLevel() const { return level; }
     int getMaxLevel() const { return maxLevel; }
+    void restoreLevelForSave(int savedLevel);
 
     void update(float deltaTime, const std::vector<Enemy*>& enemies) override;
 

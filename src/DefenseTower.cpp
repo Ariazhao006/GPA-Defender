@@ -2,6 +2,12 @@
 #include <cmath>
 #include <iostream> // only for console testing without a UI
 
+namespace {
+
+constexpr float kTowerRangeScale = 1.5f;
+
+} // namespace
+
 // --- DefenseTower base class ---
 
 DefenseTower::DefenseTower(std::string name, int cost, float range, int damage, float attackInterval)
@@ -13,6 +19,14 @@ void DefenseTower::place(const Vector2D& pos) {
     position = pos;
     placed = true;
     cooldownTimer = attackInterval;
+}
+
+void DefenseTower::restoreBaseState(const Vector2D& pos, float cooldown) {
+    position = pos;
+    placed = true;
+    cooldownTimer = cooldown;
+    if (cooldownTimer < 0.0f) cooldownTimer = 0.0f;
+    if (cooldownTimer > attackInterval) cooldownTimer = attackInterval;
 }
 
 std::vector<Enemy*> DefenseTower::collectAliveInRange(const std::vector<Enemy*>& enemies) const {
@@ -77,7 +91,7 @@ void DefenseTower::attack(Enemy& target) {
 // --- Coffee: small radius, very high burst damage ---
 
 CoffeeTower::CoffeeTower()
-    : DefenseTower("Coffee", 50, 92.0f, 88, 0.85f) {}
+    : DefenseTower("Coffee", 50, 92.0f * kTowerRangeScale, 88, 0.85f) {}
 
 void CoffeeTower::attack(Enemy& target) {
     std::cout << "[Tower] Coffee (small arc, huge hit) -> " << damage << " damage\n";
@@ -89,7 +103,7 @@ void CoffeeTower::draw() {}
 // --- Library: aura slow in radius (no HP damage from this tower) ---
 
 LibraryTower::LibraryTower()
-    : DefenseTower("Library", 120, 228.0f, 0, 1.05f),
+    : DefenseTower("Library", 120, 228.0f * kTowerRangeScale, 0, 1.05f),
     slowFactor(0.45f),
     slowDurationSec(2.85f) {}
 
@@ -120,7 +134,7 @@ void LibraryTower::draw() {}
 // --- Class: heavy hit, long recharge ---
 
 ClassTower::ClassTower()
-    : DefenseTower("Class", 80, 172.0f, 56, 2.38f) {}
+    : DefenseTower("Class", 80, 172.0f * kTowerRangeScale, 56, 2.38f) {}
 
 void ClassTower::attack(Enemy& target) {
     std::cout << "[Tower] Class sharp question -> " << damage << " damage\n";
@@ -132,7 +146,7 @@ void ClassTower::draw() {}
 // --- Bilibili: straight lane shot ---
 
 BilibiliTower::BilibiliTower()
-    : DefenseTower("Bilibili", 65, 305.0f, 8, 0.34f) {
+    : DefenseTower("Bilibili", 65, 305.0f * kTowerRangeScale, 15, 0.34f) {
     fireDirection = { 1.0f, 0.0f };
 }
 
@@ -216,7 +230,7 @@ void BilibiliTower::draw() {}
 // --- AI tower: 360 sweep + upgrades ---
 
 AITower::AITower()
-    : DefenseTower("AI(Doubao)", 100, 205.0f, 15, 1.08f),
+    : DefenseTower("AI(Doubao)", 100, 205.0f * kTowerRangeScale, 15, 1.08f),
     level(1), maxLevel(3),
     upgradeCosts{ 80, 150 },
     levelNames{ "Doubao", "DeepSeek", "GPT" }
@@ -239,7 +253,7 @@ bool AITower::upgrade(int& playerGold) {
     level++;
 
     damage += 8;
-    range += 26.0f;
+    range += 26.0f * kTowerRangeScale;
     attackInterval *= 0.9f;
 
     towerName = std::string("AI(") + levelNames[level - 1] + ")";
@@ -250,6 +264,15 @@ bool AITower::upgrade(int& playerGold) {
         << "  range=" << range
         << "  interval=" << attackInterval << "s\n";
     return true;
+}
+
+void AITower::restoreLevelForSave(int savedLevel) {
+    if (savedLevel < 1) savedLevel = 1;
+    if (savedLevel > maxLevel) savedLevel = maxLevel;
+    while (level < savedLevel) {
+        int freeGold = 1000000;
+        upgrade(freeGold);
+    }
 }
 
 void AITower::update(float deltaTime, const std::vector<Enemy*>& enemies) {

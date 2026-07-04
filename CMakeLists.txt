@@ -2,11 +2,15 @@
 
 project(gpa_defender LANGUAGES CXX)
 
+set(CMAKE_POLICY_VERSION_MINIMUM "3.5")
+
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 if(MSVC)
     add_compile_options(/utf-8)
+else()
+    add_compile_options(-finput-charset=UTF-8)
 endif()
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
@@ -55,6 +59,10 @@ add_test(NAME full_flow_smoke COMMAND full_flow_smoke)
 add_test(NAME level_data_smoke COMMAND level_data_smoke)
 
 # ========== GUI Frontend ==========
+set(FETCHCONTENT_BASE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/.deps" CACHE PATH
+    "Shared dependency cache outside build directories" FORCE)
+set(FETCHCONTENT_QUIET OFF CACHE BOOL
+    "Show dependency download/configure progress" FORCE)
 include(FetchContent)
 FetchContent_Declare(
     raylib
@@ -72,10 +80,14 @@ add_executable(gpa_defender_gui
     src/frontend/AudioManager.cpp
     src/frontend/ChestManager.cpp
     src/frontend/TextureManager.cpp
+    src/frontend/AssetPaths.cpp
 )
 target_include_directories(gpa_defender_gui PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/include
     ${CMAKE_CURRENT_SOURCE_DIR}/src
     ${CMAKE_CURRENT_SOURCE_DIR}/src/frontend
+)
+target_compile_definitions(gpa_defender_gui PRIVATE
+    GPA_DEFENDER_PROJECT_ROOT="${CMAKE_CURRENT_SOURCE_DIR}"
 )
 target_link_libraries(gpa_defender_gui PRIVATE gpa_defender_core raylib)

@@ -1,11 +1,13 @@
 ﻿#pragma once
 
+#include <memory>
 #include <vector>
 #include <functional>
 #include <random>
 
 #include <string>
 
+#include "gpa_defender/Enemy.h"
 #include "gpa_defender/Vector2D.h"
 
 namespace frontend {
@@ -19,7 +21,7 @@ enum class ChestType {
 
 enum class ChestState {
     Hidden,     // 未出现
-    Active,     // 可出现，等待玩家点击
+    Active,     // 出现在路径上，等待防御塔打掉
     Opened,     // 已开启
     Expired     // 已过期
 };
@@ -29,6 +31,9 @@ struct Chest {
     ChestType type;
     ChestState state = ChestState::Hidden;
     float timer = 0.0f;         // 存在倒计时
+    bool rewardCollected = false;
+    bool armedForAttack = false;
+    std::unique_ptr<TreasureChestEnemy> target;
 
     // 渲染相关
     float bounceOffset = 0.0f;
@@ -44,12 +49,14 @@ public:
 
     // 尝试在指定位置生成宝箱
     void trySpawnChest(const Vector2D& position, int currentWave);
+    void trySpawnChestOnPath(const std::vector<std::vector<Vector2D>>& paths, int currentWave);
 
     // 玩家点击宝箱
     bool tryOpenChest(const Vector2D& clickPos, float clickRadius);
 
     // 获取当前活跃的宝箱
     const std::vector<Chest>& getActiveChests() const { return chests; }
+    std::vector<Enemy*> getLiveTargets() const;
 
     // 检查是否有回忆模式效果正在生效
     bool isMemoryEffectActive() const;

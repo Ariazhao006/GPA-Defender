@@ -27,6 +27,7 @@ protected:
     int dmgPhysical = 0;
 
     EnemyState state;
+    bool reachedBase = false;
     Vector2D position;
     Rect boundingBox;
 
@@ -41,6 +42,7 @@ public:
     virtual ~Enemy() = default;
 
     void setPath(const std::vector<Vector2D>& path);
+    void setPosition(const Vector2D& pos);
 
     virtual void update(float deltaTime, PlayerStats* player);
     virtual int takeDamage(int damage);
@@ -54,6 +56,7 @@ public:
     const std::string& getName() const { return name; }
     Vector2D getPosition() const { return position; }
     float getEffectiveMoveSpeed() const;
+    bool hasReachedBase() const { return reachedBase; }
 };
 
 // Subject: basic learning burden
@@ -137,6 +140,13 @@ private:
 
 public:
     PeerPressureEnemy();
+    void update(float deltaTime, PlayerStats* player) override;
+    void draw() override;
+};
+
+class TreasureChestEnemy : public Enemy {
+public:
+    TreasureChestEnemy(std::string displayName, int hp, int gold);
     void update(float deltaTime, PlayerStats* player) override;
     void draw() override;
 };

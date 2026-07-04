@@ -1,5 +1,7 @@
 ﻿#include "gpa_defender/PlayerStats.h"
 
+#include <utility>
+
 namespace {
 
 // 开局时在阈值之上额外给出的缓冲，避免一上来就贴线失败
@@ -56,5 +58,21 @@ void PlayerStats::changeMental(int delta) {
 
 void PlayerStats::changeConnection(int delta) {
     currentConnection = clampInt(currentConnection + delta, kStatMin, kStatMax);
+}
+
+void PlayerStats::restoreForSave(int academic, int physical, int mental, int connection,
+    int thresholdAcademicValue, int thresholdPhysicalValue,
+    int thresholdMentalValue, int thresholdConnectionValue,
+    std::vector<std::string> tags, bool exercise) {
+    thresholdAcademic = clampInt(thresholdAcademicValue, kStatMin, kStatMax);
+    thresholdPhysical = clampInt(thresholdPhysicalValue, kStatMin, kStatMax);
+    thresholdMental = clampInt(thresholdMentalValue, kStatMin, kStatMax);
+    thresholdConnection = clampInt(thresholdConnectionValue, kStatMin, kStatMax);
+    currentAcademic = clampInt(academic, kStatMin, kStatMax);
+    currentPhysical = clampInt(physical, kStatMin, kStatMax);
+    currentMental = clampInt(mental, kStatMin, kStatMax);
+    currentConnection = clampInt(connection, kStatMin, kStatMax);
+    astiTags = std::move(tags);
+    exerciseMode = exercise;
 }
 

@@ -61,7 +61,7 @@ public:
     void reset();
 
     void updateSpawning(float deltaTime);
-    void updateEnemies(float deltaTime, PlayerStats& player);
+    int updateEnemies(float deltaTime);
 
     std::vector<Enemy*> getLiveEnemies() const;
     std::vector<bool> captureAliveStates() const;
