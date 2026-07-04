@@ -9,6 +9,7 @@
 #include "frontend/AudioManager.h"
 #include "frontend/ChestManager.h"
 #include "frontend/EffectManager.h"
+#include "frontend/SettlementVideoPlayer.h"
 #include "frontend/StageScore.h"
 #include "frontend/TextureManager.h"
 #include "raylib.h"
@@ -18,7 +19,7 @@
 
 namespace frontend {
 
-enum class Screen { MainMenu, SaveName, SaveSlots, Questionnaire, AstiSummary, LevelSelect, Game, GameOver, Victory };
+enum class Screen { MainMenu, SaveName, SaveSlots, Questionnaire, AstiSummary, LevelSelect, Game, GameOver, GraduationVideo, Victory };
 
 struct SaveSlotInfo {
     bool occupied = false;
@@ -74,11 +75,13 @@ private:
     std::array<SaveSlotInfo, 5> saveSlots;
     std::vector<StageScoreRecord> stageScores;
     bool stageScoreRecordedForCurrentLevel = false;
+    bool graduationVideoPlayedForCurrentLevel = false;
     std::string statusBannerText;
     float statusBannerTimer = 0.0f;
 
     ChestManager chestManager;
     EffectManager effectManager;
+    SettlementVideoPlayer graduationVideo;
     TextureManager textureManager;
     std::vector<Vector2D> highlandPositions;
 
@@ -102,6 +105,9 @@ private:
     void handleGlobalInput();
     void updateGame(float dt);
     void renderGame();
+    void startGraduationVideo();
+    void updateGraduationVideo(float dt);
+    void renderGraduationVideo();
     void detectAudioEvents();
 
     bool tryPlaceSelectedTower(int row, int col);

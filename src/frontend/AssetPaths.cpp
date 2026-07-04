@@ -10,6 +10,10 @@ namespace {
 
 namespace fs = std::filesystem;
 
+fs::path makePath(const std::string& path) {
+    return fs::u8path(path);
+}
+
 void addRoot(std::vector<fs::path>& roots, const fs::path& root) {
     if (root.empty()) return;
 
@@ -41,7 +45,7 @@ std::vector<fs::path> candidateRoots() {
 }
 
 bool findAsset(const std::string& relativePath, fs::path& outPath) {
-    fs::path requested(relativePath);
+    fs::path requested = makePath(relativePath);
 
     std::error_code ec;
     if (requested.is_absolute() && fs::exists(requested, ec)) {
@@ -65,7 +69,7 @@ bool findAsset(const std::string& relativePath, fs::path& outPath) {
 std::string resolveAssetPath(const std::string& relativePath) {
     fs::path path;
     if (findAsset(relativePath, path)) {
-        return path.generic_string();
+        return path.generic_u8string();
     }
 
     TraceLog(LOG_WARNING, "Asset not found: %s", relativePath.c_str());

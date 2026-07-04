@@ -1,4 +1,5 @@
 ﻿#include "frontend/GameFrontend.h"
+#include "frontend/AssetPaths.h"
 #include "frontend/Renderer.h"
 
 #include "gpa_defender/Block.h"
@@ -312,6 +313,7 @@ void GameFrontend::startNewGameFlow() {
     savedGameAvailable = true;
     stageScores.clear();
     stageScoreRecordedForCurrentLevel = false;
+    graduationVideoPlayedForCurrentLevel = false;
     pendingOverwriteSlot = -1;
     statusBannerTimer = 0.0f;
     statusBannerText.clear();
@@ -650,6 +652,7 @@ void GameFrontend::startLevel(int level) {
     gameOverMenuSelection = 0;
     victoryMenuSelection = 0;
     stageScoreRecordedForCurrentLevel = false;
+    graduationVideoPlayedForCurrentLevel = false;
     currentScreen = Screen::Game;
     savedGameAvailable = true;
     writeCurrentSave();
@@ -745,6 +748,9 @@ void GameFrontend::run() {
             runLevelSelect();
             break;
         case Screen::Game:
+            runGame();
+            break;
+        case Screen::GraduationVideo:
             runGame();
             break;
         case Screen::GameOver:
@@ -1354,6 +1360,41 @@ void GameFrontend::handleGlobalInput() {
     }
 }
 
+void GameFrontend::startGraduationVideo() {
+    graduationVideoPlayedForCurrentLevel = true;
+    std::string videoPath = assetExists("assets/video/settlement.mp4")
+        ? resolveAssetPath("assets/video/settlement.mp4")
+        : resolveAssetPath("assets/video/结算小动画.mp4");
+    if (graduationVideo.isLoaded()) {
+        if (graduationVideo.restart()) {
+            currentScreen = Screen::GraduationVideo;
+            return;
+        }
+        graduationVideo.unload();
+    }
+    if (graduationVideo.load(videoPath)) {
+        currentScreen = Screen::GraduationVideo;
+        return;
+    }
+    currentScreen = Screen::Victory;
+}
+
+void GameFrontend::updateGraduationVideo(float dt) {
+    graduationVideo.update(dt);
+    if (graduationVideo.isFinished() || IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_SPACE)
+        || primaryClickPressed()) {
+        if (IsMouseButtonDown(MOUSE_LEFT_BUTTON)) blockMouseClickUntilRelease();
+        graduationVideo.unload();
+        currentScreen = Screen::Victory;
+    }
+}
+
+void GameFrontend::renderGraduationVideo() {
+    BeginDrawing();
+    graduationVideo.draw();
+    EndDrawing();
+}
+
 void GameFrontend::updateGame(float dt) {
     int aliveBefore = engine.getWaveManager().getActiveEnemyCount();
     GamePhase phaseBefore = engine.getPhase();
@@ -1429,7 +1470,13 @@ void GameFrontend::updateGame(float dt) {
     if (phaseAfter == GamePhase::GameOver) {
         currentScreen = Screen::GameOver;
     } else if (phaseAfter == GamePhase::Victory) {
-        currentScreen = statusBannerTimer > 0.0f ? Screen::Game : Screen::Victory;
+        if (statusBannerTimer > 0.0f) {
+            currentScreen = Screen::Game;
+        } else if (currentLevel >= maxLevelCount() && !graduationVideoPlayedForCurrentLevel) {
+            startGraduationVideo();
+        } else {
+            currentScreen = Screen::Victory;
+        }
     }
 }
 
@@ -1652,6 +1699,12 @@ void GameFrontend::runGame() {
     if (statusBannerTimer > 0.0f) {
         statusBannerTimer -= dt;
         if (statusBannerTimer < 0.0f) statusBannerTimer = 0.0f;
+    }
+
+    if (currentScreen == Screen::GraduationVideo) {
+        updateGraduationVideo(dt);
+        renderGraduationVideo();
+        return;
     }
 
     if (currentScreen == Screen::Game) {

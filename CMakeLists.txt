@@ -80,6 +80,8 @@ add_executable(gpa_defender_gui
     src/frontend/AudioManager.cpp
     src/frontend/ChestManager.cpp
     src/frontend/EffectManager.cpp
+    src/frontend/SettlementVideoDecoder.cpp
+    src/frontend/SettlementVideoPlayer.cpp
     src/frontend/TextureManager.cpp
     src/frontend/AssetPaths.cpp
 )
@@ -92,3 +94,6 @@ target_compile_definitions(gpa_defender_gui PRIVATE
     GPA_DEFENDER_PROJECT_ROOT="${CMAKE_CURRENT_SOURCE_DIR}"
 )
 target_link_libraries(gpa_defender_gui PRIVATE gpa_defender_core raylib)
+if(WIN32)
+    target_link_libraries(gpa_defender_gui PRIVATE mfplat mfreadwrite mfuuid)
+endif()
