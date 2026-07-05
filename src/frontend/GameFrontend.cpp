@@ -538,6 +538,13 @@ bool GameFrontend::loadSaveSlot(int slot) {
     stageScoreRecordedForCurrentLevel = false;
 
     bool repairedSave = false;
+    bool completedCurrentLevelScore = false;
+    for (const StageScoreRecord& record : stageScores) {
+        if (record.level == currentLevel) {
+            completedCurrentLevelScore = true;
+            break;
+        }
+    }
     if (state.thresholdAcademic <= 0 || state.thresholdPhysical <= 0 ||
         state.thresholdMental <= 0 || state.thresholdConnection <= 0) {
         repairedSave = true;
@@ -554,6 +561,12 @@ bool GameFrontend::loadSaveSlot(int slot) {
     if (state.phase == GamePhase::PreGame) {
         repairedSave = true;
         state.phase = state.waveIndex >= 0 ? GamePhase::WaveCleared : GamePhase::Build;
+    }
+    if (currentLevel >= maxLevelCount() && completedCurrentLevelScore
+        && state.phase == GamePhase::Build && state.waveIndex < 0) {
+        repairedSave = true;
+        state.phase = GamePhase::Victory;
+        state.waveIndex = static_cast<int>(getLevelDefinition(currentLevel).waves.size()) - 1;
     }
 
     const int towerCount = std::max(0, std::atoi(valueOf("towerCount", "0").c_str()));
@@ -592,7 +605,8 @@ bool GameFrontend::loadSaveSlot(int slot) {
     selectedTowerIndex = -1;
     showExerciseGuide = false;
     uiScrollOffset = 0.0f;
-    currentScreen = Screen::Game;
+    currentScreen = (engine.getPhase() == GamePhase::Victory) ? Screen::Victory : Screen::Game;
+    graduationVideoPlayedForCurrentLevel = (engine.getPhase() == GamePhase::Victory);
     savedGameAvailable = true;
     if (repairedSave) {
         writeCurrentSave();

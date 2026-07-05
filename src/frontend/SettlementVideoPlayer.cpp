@@ -1,6 +1,7 @@
 #include "frontend/SettlementVideoPlayer.h"
 
 #include "frontend/Renderer.h"
+#include "frontend/SettlementVideoAudioDecoder.h"
 #include "frontend/SettlementVideoDecoder.h"
 
 #include <algorithm>
@@ -38,6 +39,7 @@ bool SettlementVideoPlayer::load(const std::string& path) {
         unload();
         return false;
     }
+    startAudio(path);
     return true;
 }
 
@@ -48,11 +50,14 @@ bool SettlementVideoPlayer::restart() {
     finished = false;
     hasFrame = false;
     frameTimer = 0.0f;
-    readNextFrame();
+    if (!readNextFrame()) return false;
+    stopAudio();
+    startAudio(sourcePath);
     return true;
 }
 
 void SettlementVideoPlayer::unload() {
+    stopAudio();
     if (texture.id != 0) {
         UnloadTexture(texture);
         texture = Texture2D{};
@@ -71,6 +76,7 @@ void SettlementVideoPlayer::unload() {
 void SettlementVideoPlayer::update(float dt) {
     if (!loaded || finished) return;
 
+    updateAudio();
     frameTimer += dt;
     while (frameTimer >= frameDuration && !finished) {
         frameTimer -= frameDuration;
@@ -103,6 +109,68 @@ bool SettlementVideoPlayer::readNextFrame() {
 
     UpdateTexture(texture, pixels.data());
     hasFrame = true;
+    return true;
+}
+
+void SettlementVideoPlayer::startAudio(const std::string& path) {
+    stopAudio();
+
+    audioDecoder = new SettlementVideoAudioDecoder();
+    if (!audioDecoder->open(path, audioSampleRate, audioChannels)) {
+        stopAudio();
+        return;
+    }
+
+    SetAudioStreamBufferSizeDefault(4096);
+    audioStream = LoadAudioStream(static_cast<unsigned int>(audioSampleRate), 16,
+                                  static_cast<unsigned int>(audioChannels));
+    if (!IsAudioStreamReady(audioStream)) {
+        stopAudio();
+        return;
+    }
+
+    audioLoaded = true;
+    audioFinished = false;
+    SetAudioStreamVolume(audioStream, 0.9f);
+
+    queueAudioBuffer();
+    queueAudioBuffer();
+    PlayAudioStream(audioStream);
+}
+
+void SettlementVideoPlayer::stopAudio() {
+    if (audioLoaded) {
+        StopAudioStream(audioStream);
+        UnloadAudioStream(audioStream);
+        audioStream = AudioStream{};
+    }
+    delete audioDecoder;
+    audioDecoder = nullptr;
+    audioSamples.clear();
+    audioLoaded = false;
+    audioFinished = false;
+    audioSampleRate = 44100;
+    audioChannels = 2;
+}
+
+void SettlementVideoPlayer::updateAudio() {
+    if (!audioLoaded || audioFinished || audioDecoder == nullptr) return;
+
+    while (IsAudioStreamProcessed(audioStream)) {
+        if (!queueAudioBuffer()) break;
+    }
+}
+
+bool SettlementVideoPlayer::queueAudioBuffer() {
+    if (!audioLoaded || audioFinished || audioDecoder == nullptr) return false;
+
+    const int framesRead = audioDecoder->readFrames(audioSamples, 4096);
+    if (framesRead <= 0) {
+        audioFinished = true;
+        return false;
+    }
+
+    UpdateAudioStream(audioStream, audioSamples.data(), framesRead);
     return true;
 }
 

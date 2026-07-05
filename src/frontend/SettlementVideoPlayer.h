@@ -7,6 +7,7 @@
 
 namespace frontend {
 
+class SettlementVideoAudioDecoder;
 class SettlementVideoDecoder;
 
 class SettlementVideoPlayer {
@@ -28,6 +29,10 @@ public:
 
 private:
     bool readNextFrame();
+    void startAudio(const std::string& path);
+    void stopAudio();
+    void updateAudio();
+    bool queueAudioBuffer();
 
     bool loaded = false;
     bool finished = false;
@@ -40,6 +45,14 @@ private:
     Texture2D texture{};
     std::vector<unsigned char> pixels;
     SettlementVideoDecoder* decoder = nullptr;
+
+    bool audioLoaded = false;
+    bool audioFinished = false;
+    int audioSampleRate = 44100;
+    int audioChannels = 2;
+    AudioStream audioStream{};
+    SettlementVideoAudioDecoder* audioDecoder = nullptr;
+    std::vector<short> audioSamples;
 };
 
 }  // namespace frontend

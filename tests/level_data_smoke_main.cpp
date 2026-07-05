@@ -145,7 +145,7 @@ int main() {
         return 1;
     }
 
-    if (GameEngine::towerSpec(TowerKind::Coffee).cost != 80
+    if (GameEngine::towerSpec(TowerKind::Coffee).cost != 50
         || GameEngine::towerSpec(TowerKind::AI).range <= 0.0f
         || GameEngine::towerSpec(TowerKind::Bilibili).cost != 65) {
         std::cout << "[Test] Tower spec contract changed unexpectedly.\n";

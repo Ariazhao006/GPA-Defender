@@ -106,7 +106,7 @@ void DefenseTower::attack(Enemy& target) {
 // --- Coffee: small radius, very high burst damage ---
 
 CoffeeTower::CoffeeTower()
-    : DefenseTower("Coffee", 80, 92.0f * kTowerRangeScale, 88, 0.85f) {}
+    : DefenseTower("Coffee", 50, 92.0f * kTowerRangeScale, 88, 0.85f) {}
 
 void CoffeeTower::attack(Enemy& target) {
     std::cout << "[Tower] Coffee (small arc, huge hit) -> " << damage << " damage\n";

@@ -80,6 +80,7 @@ add_executable(gpa_defender_gui
     src/frontend/AudioManager.cpp
     src/frontend/ChestManager.cpp
     src/frontend/EffectManager.cpp
+    src/frontend/SettlementVideoAudioDecoder.cpp
     src/frontend/SettlementVideoDecoder.cpp
     src/frontend/SettlementVideoPlayer.cpp
     src/frontend/TextureManager.cpp

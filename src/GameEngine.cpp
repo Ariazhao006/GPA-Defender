@@ -253,7 +253,7 @@ SavedEngineState GameEngine::captureSaveState() const {
     if (phase == GamePhase::WaveRunning) {
         state.phase = (waveIndex <= 0) ? GamePhase::Build : GamePhase::WaveCleared;
         state.waveIndex = waveIndex - 1;
-    } else if (phase == GamePhase::PreGame || phase == GamePhase::GameOver || phase == GamePhase::Victory) {
+    } else if (phase == GamePhase::PreGame || phase == GamePhase::GameOver) {
         state.phase = GamePhase::Build;
         state.waveIndex = -1;
     }
@@ -307,7 +307,7 @@ void GameEngine::restoreSaveState(const SavedEngineState& state) {
 
     phase = state.phase;
     if (phase == GamePhase::PreGame || phase == GamePhase::WaveRunning
-        || phase == GamePhase::GameOver || phase == GamePhase::Victory) {
+        || phase == GamePhase::GameOver) {
         phase = (waveIndex < 0) ? GamePhase::Build : GamePhase::WaveCleared;
     }
 
@@ -418,7 +418,7 @@ const char* GameEngine::phaseName(GamePhase value) {
 TowerSpec GameEngine::towerSpec(TowerKind kind) {
     switch (kind) {
     case TowerKind::Coffee:
-        return {kind, "Coffee", "Small range, huge burst damage", 80, 92.0f * kTowerRangeScale};
+        return {kind, "Coffee", "Small range, huge burst damage", 50, 92.0f * kTowerRangeScale};
     case TowerKind::AI:
         return {kind, "AI", "360 sweep, hits all in range (upgradeable)", 100, 205.0f * kTowerRangeScale};
     case TowerKind::Library:
