@@ -28,8 +28,27 @@
 namespace frontend {
 namespace {
 
+constexpr int kMaxDecodedVideoWidth = 1280;
+constexpr int kMaxDecodedVideoHeight = 720;
+
 std::wstring widenPath(const std::string& path) {
     return std::filesystem::u8path(path).wstring();
+}
+
+void fitDecodedSize(UINT32 sourceW, UINT32 sourceH, UINT32& outW, UINT32& outH) {
+    if (sourceW == 0 || sourceH == 0) {
+        outW = sourceW;
+        outH = sourceH;
+        return;
+    }
+
+    const float scale = std::min(1.0f,
+        std::min(kMaxDecodedVideoWidth / static_cast<float>(sourceW),
+                 kMaxDecodedVideoHeight / static_cast<float>(sourceH)));
+    outW = std::max<UINT32>(1, static_cast<UINT32>(sourceW * scale + 0.5f));
+    outH = std::max<UINT32>(1, static_cast<UINT32>(sourceH * scale + 0.5f));
+    outW = (outW + 1u) & ~1u;
+    outH = (outH + 1u) & ~1u;
 }
 
 void copyBgraToRgba(const unsigned char* src,
@@ -96,6 +115,27 @@ bool SettlementVideoDecoder::open(const std::string& path,
         return false;
     }
 
+    Microsoft::WRL::ComPtr<IMFMediaType> nativeType;
+    hr = impl->reader->GetNativeMediaType(MF_SOURCE_READER_FIRST_VIDEO_STREAM, 0, &nativeType);
+    if (FAILED(hr)) {
+        std::cerr << "[Video] GetNativeMediaType failed: 0x" << std::hex << hr << std::dec << "\n";
+        close();
+        return false;
+    }
+
+    UINT32 nativeW = 0;
+    UINT32 nativeH = 0;
+    hr = MFGetAttributeSize(nativeType.Get(), MF_MT_FRAME_SIZE, &nativeW, &nativeH);
+    if (FAILED(hr) || nativeW == 0 || nativeH == 0) {
+        std::cerr << "[Video] Invalid native frame size: 0x" << std::hex << hr << std::dec << "\n";
+        close();
+        return false;
+    }
+
+    UINT32 requestedW = nativeW;
+    UINT32 requestedH = nativeH;
+    fitDecodedSize(nativeW, nativeH, requestedW, requestedH);
+
     Microsoft::WRL::ComPtr<IMFMediaType> mediaType;
     hr = MFCreateMediaType(&mediaType);
     if (FAILED(hr)) {
@@ -105,11 +145,24 @@ bool SettlementVideoDecoder::open(const std::string& path,
     }
     mediaType->SetGUID(MF_MT_MAJOR_TYPE, MFMediaType_Video);
     mediaType->SetGUID(MF_MT_SUBTYPE, MFVideoFormat_RGB32);
+    MFSetAttributeSize(mediaType.Get(), MF_MT_FRAME_SIZE, requestedW, requestedH);
     hr = impl->reader->SetCurrentMediaType(MF_SOURCE_READER_FIRST_VIDEO_STREAM, nullptr, mediaType.Get());
     if (FAILED(hr)) {
-        std::cerr << "[Video] Set RGB32 media type failed: 0x" << std::hex << hr << std::dec << "\n";
-        close();
-        return false;
+        mediaType.Reset();
+        hr = MFCreateMediaType(&mediaType);
+        if (FAILED(hr)) {
+            std::cerr << "[Video] MFCreateMediaType fallback failed: 0x" << std::hex << hr << std::dec << "\n";
+            close();
+            return false;
+        }
+        mediaType->SetGUID(MF_MT_MAJOR_TYPE, MFMediaType_Video);
+        mediaType->SetGUID(MF_MT_SUBTYPE, MFVideoFormat_RGB32);
+        hr = impl->reader->SetCurrentMediaType(MF_SOURCE_READER_FIRST_VIDEO_STREAM, nullptr, mediaType.Get());
+        if (FAILED(hr)) {
+            std::cerr << "[Video] Set RGB32 media type failed: 0x" << std::hex << hr << std::dec << "\n";
+            close();
+            return false;
+        }
     }
 
     Microsoft::WRL::ComPtr<IMFMediaType> currentType;

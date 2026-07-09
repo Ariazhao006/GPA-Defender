@@ -40,6 +40,10 @@ bool screenToGrid(Vector2 screenPos, int& outRow, int& outCol);
 // Font management for CJK text rendering
 void setUiFont(Font font);
 const Font& getUiFont();
+void initVirtualCanvas();
+void shutdownVirtualCanvas();
+void beginVirtualDrawing();
+void endVirtualDrawing();
 int measureTextF(const char* text, int fontSize);
 void drawTextF(const char* text, int x, int y, int fontSize, Color color);
 
@@ -52,6 +56,8 @@ Rectangle astiContinueRect();
 Rectangle gameOverOptionRect(int option);
 Rectangle victoryOptionRect(int option, bool hasNextLevel);
 Rectangle seedBarTowerRect(int index);
+Rectangle levelSelectRetakeRect();
+Rectangle levelSelectReturnRect();
 
 // Helper: pick tile source rect from the map tilesheet (17x12 grid of 64x64)
 Rectangle mapTileSrc(int col, int row);
@@ -78,7 +84,7 @@ void drawEnemies(const std::vector<Enemy*>& enemies,
                  const TextureManager* tm = nullptr);
 void drawChests(const std::vector<Chest>& chests,
                 const TextureManager* tm = nullptr);
-void drawUI(const GameSnapshot& snap, int gold, TowerKind selectedTower,
+void drawUI(const GameSnapshot& snap, int gold, int currentLevel, TowerKind selectedTower,
             bool exerciseMode, int selectedTowerIndex, bool showExerciseGuide,
             float timeScale, float panelScrollOffset, const TextureManager* tm);
 void drawSeedBar(int gold, TowerKind selectedTower, const TextureManager* tm);

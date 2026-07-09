@@ -26,9 +26,62 @@ constexpr Color kWarn = {196, 133, 40, 255};
 } // namespace
 
 static Font gUiFont;
+static RenderTexture2D gVirtualCanvas{};
+static bool gVirtualCanvasReady = false;
+static float gVirtualScale = 1.0f;
+static Vector2 gVirtualOffset{0.0f, 0.0f};
 
 void setUiFont(Font font) { gUiFont = font; }
 const Font& getUiFont() { return gUiFont; }
+
+void initVirtualCanvas() {
+    if (gVirtualCanvasReady) return;
+    gVirtualCanvas = LoadRenderTexture(SCREEN_WIDTH, SCREEN_HEIGHT);
+    SetTextureFilter(gVirtualCanvas.texture, TEXTURE_FILTER_BILINEAR);
+    gVirtualCanvasReady = true;
+}
+
+void shutdownVirtualCanvas() {
+    if (!gVirtualCanvasReady) return;
+    UnloadRenderTexture(gVirtualCanvas);
+    gVirtualCanvas = {};
+    gVirtualCanvasReady = false;
+}
+
+void beginVirtualDrawing() {
+    if (!gVirtualCanvasReady) initVirtualCanvas();
+
+    const float scaleX = GetScreenWidth() / static_cast<float>(SCREEN_WIDTH);
+    const float scaleY = GetScreenHeight() / static_cast<float>(SCREEN_HEIGHT);
+    gVirtualScale = std::max(0.01f, std::min(scaleX, scaleY));
+    const float drawW = SCREEN_WIDTH * gVirtualScale;
+    const float drawH = SCREEN_HEIGHT * gVirtualScale;
+    gVirtualOffset = {
+        (GetScreenWidth() - drawW) * 0.5f,
+        (GetScreenHeight() - drawH) * 0.5f
+    };
+
+    SetMouseOffset(static_cast<int>(-gVirtualOffset.x), static_cast<int>(-gVirtualOffset.y));
+    SetMouseScale(1.0f / gVirtualScale, 1.0f / gVirtualScale);
+
+    BeginTextureMode(gVirtualCanvas);
+}
+
+void endVirtualDrawing() {
+    EndTextureMode();
+
+    BeginDrawing();
+    ClearBackground(BLACK);
+    DrawTexturePro(gVirtualCanvas.texture,
+                   {0.0f, 0.0f,
+                    static_cast<float>(gVirtualCanvas.texture.width),
+                    static_cast<float>(-gVirtualCanvas.texture.height)},
+                   {gVirtualOffset.x, gVirtualOffset.y,
+                    SCREEN_WIDTH * gVirtualScale,
+                    SCREEN_HEIGHT * gVirtualScale},
+                   {0.0f, 0.0f}, 0.0f, WHITE);
+    EndDrawing();
+}
 
 Rectangle mainMenuStartRect() {
     return {SCREEN_WIDTH / 2.0f - 200.0f, 630.0f, 400.0f, 76.0f};
@@ -82,6 +135,14 @@ Rectangle victoryOptionRect(int option, bool hasNextLevel) {
 
 Rectangle seedBarTowerRect(int index) {
     return {220.0f + index * 160.0f, 18.0f, 142.0f, 126.0f};
+}
+
+Rectangle levelSelectRetakeRect() {
+    return {SCREEN_WIDTH / 2.0f - 480.0f, 1120.0f, 430.0f, 90.0f};
+}
+
+Rectangle levelSelectReturnRect() {
+    return {SCREEN_WIDTH / 2.0f + 50.0f, 1120.0f, 430.0f, 90.0f};
 }
 
 int measureTextF(const char* text, int fontSize) {
@@ -799,7 +860,7 @@ void drawSeedBar(int gold, TowerKind selectedTower, const TextureManager* tm) {
     }
 }
 
-void drawUI(const GameSnapshot& snap, int gold, TowerKind selectedTower,
+void drawUI(const GameSnapshot& snap, int gold, int currentLevel, TowerKind selectedTower,
             bool exerciseMode, int selectedTowerIndex, bool showExerciseGuide,
             float timeScale, float panelScrollOffset, const TextureManager* tm) {
     int x = UI_PANEL_X;
@@ -828,7 +889,7 @@ void drawUI(const GameSnapshot& snap, int gold, TowerKind selectedTower,
     drawTextF(("Wave: " + std::to_string(snap.waveIndex + 1) + "/3").c_str(),
               lx, y, 30, kMuted);
     y += 40;
-    drawTextF(("Level: " + std::to_string(snap.levelIndex) + "/4").c_str(),
+    drawTextF(("Level: " + std::to_string(currentLevel) + "/4").c_str(),
               lx, y, 30, kMuted);
     y += 50;
 
@@ -1116,25 +1177,23 @@ void drawLevelSelect(int unlockedLevel, int hoveredLevel, const TextureManager* 
                   unlocked ? kAccent : Color{180, 85, 85, 255});
     }
 
-    Rectangle retryRect{
-        SCREEN_WIDTH / 2.0f - 228.0f,
-        1120.0f,
-        455.0f,
-        90.0f
-    };
-    bool retryHovered = CheckCollisionPointRec(GetMousePosition(), retryRect);
-    Color retryBg = retryHovered ? kAccentSoft : Color{255, 255, 252, 255};
-    Color retryBorder = retryHovered ? kAccent : kPanelLine;
-    DrawRectangleRounded(retryRect, 0.2f, 8, retryBg);
-    if (retryHovered) DrawRectangleRoundedLines(retryRect, 0.2f, 8, 1.0f, retryBorder);
+    auto drawLevelButton = [&](Rectangle rect, const char* label) {
+        bool hovered = CheckCollisionPointRec(GetMousePosition(), rect);
+        Color bg = hovered ? kAccentSoft : Color{255, 255, 252, 255};
+        Color border = hovered ? kAccent : kPanelLine;
+        DrawRectangleRounded(rect, 0.2f, 8, bg);
+        DrawRectangleRoundedLines(rect, 0.2f, 8, 1.0f, border);
 
-    const char* retry = "Retake ASTI";
-    tw = measureTextF(retry, 30);
-    drawTextF(retry,
-              static_cast<int>(retryRect.x + retryRect.width / 2 - tw / 2),
-              static_cast<int>(retryRect.y + 20),
-              30,
-              retryHovered ? kAccent : kInk);
+        tw = measureTextF(label, 30);
+        drawTextF(label,
+                  static_cast<int>(rect.x + rect.width / 2 - tw / 2),
+                  static_cast<int>(rect.y + 20),
+                  30,
+                  hovered ? kAccent : kInk);
+    };
+
+    drawLevelButton(levelSelectRetakeRect(), "Retake ASTI");
+    drawLevelButton(levelSelectReturnRect(), "Return to Menu");
 }
 
 // ---- Game over / Victory ----

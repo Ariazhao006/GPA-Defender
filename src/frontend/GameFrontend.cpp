@@ -29,6 +29,8 @@ namespace frontend {
 namespace {
 
 constexpr int kUiFontBaseSize = 96;
+constexpr int kFallbackWindowWidth = 1280;
+constexpr int kFallbackWindowHeight = 853;
 
 bool usableLoadedFont(const Font& font, const Font& defaultFont) {
     return IsFontReady(font) && font.texture.id != 0 && font.texture.id != defaultFont.texture.id;
@@ -70,6 +72,31 @@ std::filesystem::path saveDir() {
 #else
     return std::filesystem::current_path() / "saves";
 #endif
+}
+
+void fitWindowToCurrentMonitor() {
+    const int monitor = GetCurrentMonitor();
+    const int monitorW = GetMonitorWidth(monitor);
+    const int monitorH = GetMonitorHeight(monitor);
+    const int maxW = std::max(640, monitorW - 80);
+    const int maxH = std::max(480, monitorH - 180);
+    const float fitScale = std::min({
+        1.0f,
+        maxW / static_cast<float>(SCREEN_WIDTH),
+        maxH / static_cast<float>(SCREEN_HEIGHT)
+    });
+    const int minW = std::min(960, maxW);
+    const int minH = std::min(640, maxH);
+    const int windowW = std::max(minW, static_cast<int>(std::round(SCREEN_WIDTH * fitScale)));
+    const int windowH = std::max(minH, static_cast<int>(std::round(SCREEN_HEIGHT * fitScale)));
+
+    SetWindowMinSize(minW, minH);
+    SetWindowSize(windowW, windowH);
+
+    const Vector2 monitorPos = GetMonitorPosition(monitor);
+    const int x = static_cast<int>(monitorPos.x) + std::max(0, (monitorW - windowW) / 2);
+    const int y = static_cast<int>(monitorPos.y) + std::max(20, (monitorH - windowH) / 2);
+    SetWindowPosition(x, y);
 }
 
 std::filesystem::path savePath(int slot) {
@@ -323,7 +350,7 @@ void GameFrontend::startNewGameFlow() {
     chestManager.reset();
     effectManager.clear();
     audio.stopBGM();
-    currentScreen = Screen::Questionnaire;
+    startOpeningVideo();
 }
 
 void GameFrontend::returnToMainMenuWithSave() {
@@ -693,7 +720,9 @@ void GameFrontend::initEngine() {
 
 void GameFrontend::run() {
     SetConfigFlags(FLAG_WINDOW_RESIZABLE);
-    InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "GPA Defender");
+    InitWindow(kFallbackWindowWidth, kFallbackWindowHeight, "GPA Defender");
+    fitWindowToCurrentMonitor();
+    initVirtualCanvas();
 
     // Fix working directory when launched from file explorer (build/bin/)
     // The assets/ folder is relative to the project root.
@@ -752,11 +781,17 @@ void GameFrontend::run() {
         case Screen::SaveSlots:
             runSaveSlots();
             break;
+        case Screen::OpeningVideo:
+            runOpeningVideo();
+            break;
         case Screen::Questionnaire:
             runQuestionnaire();
             break;
         case Screen::AstiSummary:
             runAstiSummary();
+            break;
+        case Screen::TowerIntroVideo:
+            runTowerIntroVideo();
             break;
         case Screen::LevelSelect:
             runLevelSelect();
@@ -776,6 +811,10 @@ void GameFrontend::run() {
 
     writeCurrentSave();
     textureManager.unloadAll();
+    openingVideo.unload();
+    towerIntroVideo.unload();
+    graduationVideo.unload();
+    shutdownVirtualCanvas();
     if (uiFont.texture.id != GetFontDefault().texture.id) {
         UnloadFont(uiFont);
     }
@@ -820,10 +859,10 @@ void GameFrontend::runMainMenu() {
         return;
     }
 
-    BeginDrawing();
+    beginVirtualDrawing();
     ClearBackground(Color{20, 20, 35, 255});
     drawMainMenu(&textureManager, savedGameAvailable);
-    EndDrawing();
+    endVirtualDrawing();
 }
 
 void GameFrontend::drawSaveNameScreen() {
@@ -900,9 +939,9 @@ void GameFrontend::runSaveName() {
         return;
     }
 
-    BeginDrawing();
+    beginVirtualDrawing();
     drawSaveNameScreen();
-    EndDrawing();
+    endVirtualDrawing();
 }
 
 void GameFrontend::drawSaveSlotsScreen() {
@@ -998,9 +1037,9 @@ void GameFrontend::runSaveSlots() {
         }
     }
 
-    BeginDrawing();
+    beginVirtualDrawing();
     drawSaveSlotsScreen();
-    EndDrawing();
+    endVirtualDrawing();
 }
 
 void GameFrontend::runQuestionnaire() {
@@ -1043,10 +1082,10 @@ void GameFrontend::runQuestionnaire() {
         --currentQuestion;
     }
 
-    BeginDrawing();
+    beginVirtualDrawing();
     ClearBackground(Color{20, 20, 35, 255});
     drawQuestionnaire(questionnaire, currentQuestion, answers);
-    EndDrawing();
+    endVirtualDrawing();
 }
 
 void GameFrontend::runAstiSummary() {
@@ -1061,15 +1100,14 @@ void GameFrontend::runAstiSummary() {
         selectedTowerIndex = -1;
         showExerciseGuide = false;
         chestManager.reset();
-        showStatusBanner("Choose a Level");
-        currentScreen = Screen::LevelSelect;
+        startTowerIntroVideo();
         return;
     }
 
-    BeginDrawing();
+    beginVirtualDrawing();
     ClearBackground(Color{20, 20, 35, 255});
     drawAstiSummary(astiResult);
-    EndDrawing();
+    endVirtualDrawing();
 }
 
 void GameFrontend::runLevelSelect() {
@@ -1079,12 +1117,8 @@ void GameFrontend::runLevelSelect() {
     const int totalW = cardW * 4 + gap * 3;
     const int startX = SCREEN_WIDTH / 2 - totalW / 2;
     const int cardY = 280;
-    const Rectangle retryRect{
-        SCREEN_WIDTH / 2.0f - 228.0f,
-        1120.0f,
-        455.0f,
-        90.0f
-    };
+    const Rectangle retryRect = levelSelectRetakeRect();
+    const Rectangle returnRect = levelSelectReturnRect();
 
     Vector2 mouse = GetMousePosition();
     int hoveredLevel = 0;
@@ -1118,14 +1152,26 @@ void GameFrontend::runLevelSelect() {
         showExerciseGuide = false;
         engine = GameEngine();
         chestManager.reset();
+        currentScreen = Screen::Questionnaire;
+        return;
+    }
+
+    if (CheckCollisionPointRec(mouse, returnRect) && primaryClickPressed()) {
+        audio.playClick();
+        blockMouseClickUntilRelease();
+        selectedTowerIndex = -1;
+        showExerciseGuide = false;
+        statusBannerTimer = 0.0f;
+        statusBannerText.clear();
+        audio.stopBGM();
         currentScreen = Screen::MainMenu;
         return;
     }
 
-    BeginDrawing();
+    beginVirtualDrawing();
     ClearBackground(Color{20, 20, 35, 255});
     drawLevelSelect(unlockedLevel, hoveredLevel, &textureManager);
-    EndDrawing();
+    endVirtualDrawing();
 }
 
 bool GameFrontend::tryPlaceSelectedTower(int row, int col) {
@@ -1374,6 +1420,88 @@ void GameFrontend::handleGlobalInput() {
     }
 }
 
+void GameFrontend::startOpeningVideo() {
+    std::string videoPath = assetExists("assets/video/opening.mp4")
+        ? resolveAssetPath("assets/video/opening.mp4")
+        : resolveAssetPath("assets/video/开场小动画.mp4");
+    if (openingVideo.isLoaded()) {
+        if (openingVideo.restart()) {
+            currentScreen = Screen::OpeningVideo;
+            return;
+        }
+        openingVideo.unload();
+    }
+    if (openingVideo.load(videoPath)) {
+        currentScreen = Screen::OpeningVideo;
+        return;
+    }
+    currentScreen = Screen::Questionnaire;
+}
+
+void GameFrontend::updateOpeningVideo(float dt) {
+    openingVideo.update(dt);
+    if (openingVideo.isFinished() || IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_SPACE)
+        || primaryClickPressed()) {
+        if (IsMouseButtonDown(MOUSE_LEFT_BUTTON)) blockMouseClickUntilRelease();
+        openingVideo.unload();
+        currentScreen = Screen::Questionnaire;
+    }
+}
+
+void GameFrontend::renderOpeningVideo() {
+    beginVirtualDrawing();
+    openingVideo.draw();
+    endVirtualDrawing();
+}
+
+void GameFrontend::runOpeningVideo() {
+    float dt = GetFrameTime();
+    updateOpeningVideo(dt);
+    renderOpeningVideo();
+}
+
+void GameFrontend::startTowerIntroVideo() {
+    std::string videoPath = assetExists("assets/video/tower_monster_intro.mp4")
+        ? resolveAssetPath("assets/video/tower_monster_intro.mp4")
+        : resolveAssetPath("assets/video/塔和怪兽介绍.mp4");
+    if (towerIntroVideo.isLoaded()) {
+        if (towerIntroVideo.restart()) {
+            currentScreen = Screen::TowerIntroVideo;
+            return;
+        }
+        towerIntroVideo.unload();
+    }
+    if (towerIntroVideo.load(videoPath)) {
+        currentScreen = Screen::TowerIntroVideo;
+        return;
+    }
+    showStatusBanner("Choose a Level");
+    currentScreen = Screen::LevelSelect;
+}
+
+void GameFrontend::updateTowerIntroVideo(float dt) {
+    towerIntroVideo.update(dt);
+    if (towerIntroVideo.isFinished() || IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_SPACE)
+        || primaryClickPressed()) {
+        if (IsMouseButtonDown(MOUSE_LEFT_BUTTON)) blockMouseClickUntilRelease();
+        towerIntroVideo.unload();
+        showStatusBanner("Choose a Level");
+        currentScreen = Screen::LevelSelect;
+    }
+}
+
+void GameFrontend::renderTowerIntroVideo() {
+    beginVirtualDrawing();
+    towerIntroVideo.draw();
+    endVirtualDrawing();
+}
+
+void GameFrontend::runTowerIntroVideo() {
+    float dt = GetFrameTime();
+    updateTowerIntroVideo(dt);
+    renderTowerIntroVideo();
+}
+
 void GameFrontend::startGraduationVideo() {
     graduationVideoPlayedForCurrentLevel = true;
     std::string videoPath = assetExists("assets/video/settlement.mp4")
@@ -1404,9 +1532,9 @@ void GameFrontend::updateGraduationVideo(float dt) {
 }
 
 void GameFrontend::renderGraduationVideo() {
-    BeginDrawing();
+    beginVirtualDrawing();
     graduationVideo.draw();
-    EndDrawing();
+    endVirtualDrawing();
 }
 
 void GameFrontend::updateGame(float dt) {
@@ -1495,7 +1623,7 @@ void GameFrontend::updateGame(float dt) {
 }
 
 void GameFrontend::renderGame() {
-    BeginDrawing();
+    beginVirtualDrawing();
     ClearBackground(Color{246, 248, 244, 255});
 
     drawSeedBar(engine.getGold(), selectedTowerKind, &textureManager);
@@ -1553,7 +1681,7 @@ void GameFrontend::renderGame() {
     drawChests(chestManager.getActiveChests(), &textureManager);
     effectManager.draw();
 
-    drawUI(snap, engine.getGold(), selectedTowerKind,
+    drawUI(snap, engine.getGold(), currentLevel, selectedTowerKind,
            engine.getExerciseMode(), selectedTowerIndex, showExerciseGuide,
            engine.getTimeScale(), uiScrollOffset, &textureManager);
 
@@ -1585,7 +1713,7 @@ void GameFrontend::renderGame() {
                 }
                 if (!clickedOption) {
                     blockMouseClickUntilRelease();
-                    EndDrawing();
+                    endVirtualDrawing();
                     return;
                 }
                 blockMouseClickUntilRelease();
@@ -1638,7 +1766,7 @@ void GameFrontend::renderGame() {
                 }
                 if (!clickedOption) {
                     blockMouseClickUntilRelease();
-                    EndDrawing();
+                    endVirtualDrawing();
                     return;
                 }
                 blockMouseClickUntilRelease();
@@ -1705,7 +1833,7 @@ void GameFrontend::renderGame() {
                   fontSize, text);
     }
 
-    EndDrawing();
+    endVirtualDrawing();
 }
 
 void GameFrontend::runGame() {

@@ -19,7 +19,7 @@
 
 namespace frontend {
 
-enum class Screen { MainMenu, SaveName, SaveSlots, Questionnaire, AstiSummary, LevelSelect, Game, GameOver, GraduationVideo, Victory };
+enum class Screen { MainMenu, SaveName, SaveSlots, OpeningVideo, Questionnaire, AstiSummary, TowerIntroVideo, LevelSelect, Game, GameOver, GraduationVideo, Victory };
 
 struct SaveSlotInfo {
     bool occupied = false;
@@ -81,6 +81,8 @@ private:
 
     ChestManager chestManager;
     EffectManager effectManager;
+    SettlementVideoPlayer openingVideo;
+    SettlementVideoPlayer towerIntroVideo;
     SettlementVideoPlayer graduationVideo;
     TextureManager textureManager;
     std::vector<Vector2D> highlandPositions;
@@ -95,8 +97,10 @@ private:
     void runMainMenu();
     void runSaveName();
     void runSaveSlots();
+    void runOpeningVideo();
     void runQuestionnaire();
     void runAstiSummary();
+    void runTowerIntroVideo();
     void runLevelSelect();
     void runGame();
 
@@ -105,6 +109,12 @@ private:
     void handleGlobalInput();
     void updateGame(float dt);
     void renderGame();
+    void startOpeningVideo();
+    void updateOpeningVideo(float dt);
+    void renderOpeningVideo();
+    void startTowerIntroVideo();
+    void updateTowerIntroVideo(float dt);
+    void renderTowerIntroVideo();
     void startGraduationVideo();
     void updateGraduationVideo(float dt);
     void renderGraduationVideo();

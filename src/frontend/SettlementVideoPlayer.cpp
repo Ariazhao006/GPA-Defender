@@ -78,9 +78,15 @@ void SettlementVideoPlayer::update(float dt) {
 
     updateAudio();
     frameTimer += dt;
-    while (frameTimer >= frameDuration && !finished) {
+
+    int decodedFrames = 0;
+    while (frameTimer >= frameDuration && !finished && decodedFrames < 2) {
         frameTimer -= frameDuration;
         readNextFrame();
+        ++decodedFrames;
+    }
+    if (frameTimer >= frameDuration * 3.0f) {
+        frameTimer = frameDuration;
     }
 }
 
