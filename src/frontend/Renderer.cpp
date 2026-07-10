@@ -145,6 +145,18 @@ Rectangle levelSelectReturnRect() {
     return {SCREEN_WIDTH / 2.0f + 50.0f, 1120.0f, 430.0f, 90.0f};
 }
 
+Rectangle gambleSkipRect() {
+    return {SCREEN_WIDTH / 2.0f - 445.0f, SCREEN_HEIGHT / 2.0f + 54.0f, 365.0f, 230.0f};
+}
+
+Rectangle gambleNoSkipRect() {
+    return {SCREEN_WIDTH / 2.0f + 80.0f, SCREEN_HEIGHT / 2.0f + 54.0f, 365.0f, 230.0f};
+}
+
+Rectangle gambleResultContinueRect() {
+    return {SCREEN_WIDTH / 2.0f - 180.0f, SCREEN_HEIGHT / 2.0f + 244.0f, 360.0f, 64.0f};
+}
+
 int measureTextF(const char* text, int fontSize) {
     Vector2 sz = MeasureTextEx(gUiFont, text, static_cast<float>(fontSize), 0.0f);
     return static_cast<int>(sz.x);
@@ -1298,6 +1310,104 @@ void drawGameOver(int selection) {
                   26,
                   active ? kInk : kMuted);
     }
+}
+
+void drawTextureFit(const Texture2D& texture, Rectangle dest, Color tint) {
+    if (texture.id == 0) return;
+    DrawTexturePro(texture,
+                   {0.0f, 0.0f,
+                    static_cast<float>(texture.width),
+                    static_cast<float>(texture.height)},
+                   dest, {0.0f, 0.0f}, 0.0f, tint);
+}
+
+void drawGambleChoice(const TextureManager* tm) {
+    DrawRectangle(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, Color{0, 0, 0, 155});
+
+    Rectangle prompt{
+        SCREEN_WIDTH / 2.0f - 538.0f,
+        SCREEN_HEIGHT / 2.0f - 306.0f,
+        1076.0f,
+        612.0f
+    };
+    if (tm && tm->gamblePrompt.id != 0) {
+        drawTextureFit(tm->gamblePrompt, prompt, WHITE);
+    } else {
+        DrawRectangleRounded(prompt, 0.04f, 8, Color{255, 246, 230, 255});
+        DrawRectangleRoundedLines(prompt, 0.04f, 8, 2.0f, kInk);
+        const char* title = "SKIP CLASS?";
+        int tw = measureTextF(title, 74);
+        drawTextF(title, static_cast<int>(SCREEN_WIDTH / 2 - tw / 2),
+                  static_cast<int>(prompt.y + 120), 74, kInk);
+    }
+
+    auto drawChoice = [&](Rectangle rect, const Texture2D& texture, const char* label) {
+        const bool hover = CheckCollisionPointRec(GetMousePosition(), rect);
+        Rectangle drawRect = rect;
+        if (hover) {
+            drawRect.x -= 9.0f;
+            drawRect.y -= 7.0f;
+            drawRect.width += 18.0f;
+            drawRect.height += 14.0f;
+        }
+        if (texture.id != 0) {
+            drawTextureFit(texture, drawRect, hover ? WHITE : Color{245, 245, 245, 245});
+        } else {
+            DrawRectangleRounded(drawRect, 0.12f, 8,
+                                 hover ? kAccentSoft : Color{255, 255, 252, 255});
+            DrawRectangleRoundedLines(drawRect, 0.12f, 8, 2.0f,
+                                      hover ? kAccent : kPanelLine);
+            int tw = measureTextF(label, 38);
+            drawTextF(label,
+                      static_cast<int>(drawRect.x + drawRect.width / 2 - tw / 2),
+                      static_cast<int>(drawRect.y + drawRect.height / 2 - 23),
+                      38, hover ? kAccent : kInk);
+        }
+    };
+
+    drawChoice(gambleSkipRect(), tm ? tm->gambleSkip : Texture2D{}, "Skip Class");
+    drawChoice(gambleNoSkipRect(), tm ? tm->gambleNoSkip : Texture2D{}, "Don't Skip");
+}
+
+void drawGambleResult(bool won, const TextureManager* tm) {
+    DrawRectangle(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, Color{0, 0, 0, 165});
+
+    const Texture2D* texture = nullptr;
+    if (tm) texture = won ? &tm->gambleWin : &tm->gambleLose;
+    Rectangle result{
+        SCREEN_WIDTH / 2.0f - 465.0f,
+        SCREEN_HEIGHT / 2.0f - 226.0f,
+        930.0f,
+        452.0f
+    };
+    if (texture && texture->id != 0) {
+        drawTextureFit(*texture, result, WHITE);
+    } else {
+        DrawRectangleRounded(result, 0.04f, 8, Color{255, 246, 230, 255});
+        DrawRectangleRoundedLines(result, 0.04f, 8, 2.0f, kInk);
+        const char* title = won ? "Professor didn't roll call." : "Professor rolled call.";
+        const char* coins = won ? "Coins +50" : "Coins -50";
+        int tw = measureTextF(title, 44);
+        drawTextF(title, static_cast<int>(SCREEN_WIDTH / 2 - tw / 2),
+                  static_cast<int>(result.y + 125), 44, kInk);
+        tw = measureTextF(coins, 52);
+        drawTextF(coins, static_cast<int>(SCREEN_WIDTH / 2 - tw / 2),
+                  static_cast<int>(result.y + 245), 52,
+                  won ? kAccent : Color{180, 85, 85, 255});
+    }
+
+    Rectangle btn = gambleResultContinueRect();
+    const bool hover = CheckCollisionPointRec(GetMousePosition(), btn);
+    DrawRectangleRounded(btn, 0.22f, 8,
+                         hover ? kAccentSoft : Color{255, 255, 252, 245});
+    DrawRectangleRoundedLines(btn, 0.22f, 8, 1.5f,
+                              hover ? kAccent : kPanelLine);
+    const char* label = "Continue";
+    int tw = measureTextF(label, 30);
+    drawTextF(label,
+              static_cast<int>(btn.x + btn.width / 2 - tw / 2),
+              static_cast<int>(btn.y + 17),
+              30, hover ? kAccent : kInk);
 }
 
 void drawVictory(int selection, bool hasNextLevel,

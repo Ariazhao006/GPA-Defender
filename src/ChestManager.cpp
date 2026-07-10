@@ -5,6 +5,8 @@
 
 namespace {
 
+constexpr float kChestSpawnChance = 0.6f;
+
 const char* chestTypeName(ChestType type) {
     switch (type) {
     case ChestType::Memory: return "Memory Chest";
@@ -82,7 +84,7 @@ void ChestManager::update(float deltaTime, int currentWave, int totalWaves) {
 void ChestManager::trySpawnChest(const Vector2D& position, int currentWave) {
     (void)currentWave;
     std::uniform_real_distribution<float> dist(0.0f, 1.0f);
-    if (dist(rng) > 0.6f) return;
+    if (dist(rng) > kChestSpawnChance) return;
     spawnChest(randomChestType(), position, 0);
 }
 
@@ -107,7 +109,7 @@ void ChestManager::trySpawnChestOnPath(const std::vector<std::vector<Vector2D>>&
     const Candidate& candidate = candidates[static_cast<std::size_t>(posDist(rng))];
 
     std::uniform_real_distribution<float> spawnDist(0.0f, 1.0f);
-    if (spawnDist(rng) > 0.6f) return;
+    if (spawnDist(rng) > kChestSpawnChance) return;
     spawnChest(randomChestType(), candidate.position, candidate.pathId);
     (void)currentWave;
 }
@@ -225,16 +227,7 @@ void ChestManager::resolveOpenedChest(Chest& chest) {
         break;
     }
     case ChestType::Gamble: {
-        std::uniform_real_distribution<float> chanceDist(0.0f, 1.0f);
-        gambleWon = chanceDist(rng) > 0.5f;
-        std::uniform_int_distribution<int> goldDist(50, 150);
-        gambleGold = goldDist(rng);
-        gambleResultPending = true;
-        events.push_back({gambleWon ? ChestEventType::GambleWon : ChestEventType::GambleLost,
-                          chest.type, gambleGold, chest.pathId});
-        setEffectMessage(gambleWon
-            ? "Gamble won: Gold +" + std::to_string(gambleGold) + "!"
-            : "Gamble lost: Gold -" + std::to_string(gambleGold) + "!");
+        events.push_back({ChestEventType::GamblePrompt, chest.type, 0, chest.pathId});
         break;
     }
     }

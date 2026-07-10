@@ -383,6 +383,7 @@ void GameEngine::processChestEvents() {
         switch (event.type) {
         case ChestEventType::Targeted:
         case ChestEventType::MemoryActivated:
+        case ChestEventType::GamblePrompt:
             break;
         case ChestEventType::HellBossSpawned:
             waveManager.spawnImmediate(EnemyKind::MidtermBoss, event.pathId);

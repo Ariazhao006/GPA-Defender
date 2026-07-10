@@ -21,6 +21,7 @@ enable_testing()
 
 add_library(gpa_defender_core STATIC
     src/Block.cpp
+    src/ChestManager.cpp
     src/DefenseTower.cpp
     src/Enemy.cpp
     src/GameEngine.cpp
@@ -78,7 +79,6 @@ add_executable(gpa_defender_gui
     src/frontend/GameFrontend.cpp
     src/frontend/Renderer.cpp
     src/frontend/AudioManager.cpp
-    src/frontend/ChestManager.cpp
     src/frontend/EffectManager.cpp
     src/frontend/SettlementVideoAudioDecoder.cpp
     src/frontend/SettlementVideoDecoder.cpp

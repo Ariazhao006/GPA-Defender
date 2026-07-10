@@ -29,6 +29,7 @@ enum class ChestEventType {
     MemoryActivated,
     HellBossSpawned,
     RewardGranted,
+    GamblePrompt,
     GambleWon,
     GambleLost
 };

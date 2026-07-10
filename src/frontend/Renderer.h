@@ -58,6 +58,9 @@ Rectangle victoryOptionRect(int option, bool hasNextLevel);
 Rectangle seedBarTowerRect(int index);
 Rectangle levelSelectRetakeRect();
 Rectangle levelSelectReturnRect();
+Rectangle gambleSkipRect();
+Rectangle gambleNoSkipRect();
+Rectangle gambleResultContinueRect();
 
 // Helper: pick tile source rect from the map tilesheet (17x12 grid of 64x64)
 Rectangle mapTileSrc(int col, int row);
@@ -95,6 +98,8 @@ void drawGameOver(int selection);
 void drawVictory(int selection, bool hasNextLevel,
                  const StageScoreRecord* currentScore,
                  const std::vector<StageScoreRecord>& stageScores);
+void drawGambleChoice(const TextureManager* tm = nullptr);
+void drawGambleResult(bool won, const TextureManager* tm = nullptr);
 void drawQuestionnaire(const Questionnaire& q, int current,
                        const std::vector<int>& answers);
 void drawAstiSummary(const AstiResult& result);

@@ -344,6 +344,7 @@ void GameFrontend::startNewGameFlow() {
     pendingOverwriteSlot = -1;
     statusBannerTimer = 0.0f;
     statusBannerText.clear();
+    gambleMiniGameState = GambleMiniGameState::None;
     questionnaire = buildAstiQuestionnaire();
     answers.assign(questionnaire.getQuestions().size(), -1);
     engine = GameEngine();
@@ -697,6 +698,7 @@ void GameFrontend::startLevel(int level) {
     victoryMenuSelection = 0;
     stageScoreRecordedForCurrentLevel = false;
     graduationVideoPlayedForCurrentLevel = false;
+    gambleMiniGameState = GambleMiniGameState::None;
     currentScreen = Screen::Game;
     savedGameAvailable = true;
     writeCurrentSave();
@@ -1501,6 +1503,70 @@ void GameFrontend::runTowerIntroVideo() {
     renderTowerIntroVideo();
 }
 
+bool GameFrontend::isGambleMiniGameActive() const {
+    return gambleMiniGameState != GambleMiniGameState::None;
+}
+
+void GameFrontend::startGambleMiniGame() {
+    gambleMiniGameState = GambleMiniGameState::Choice;
+    gambleMiniGameWon = false;
+    gambleMiniGameGold = 50;
+    statusBannerTimer = 0.0f;
+    statusBannerText.clear();
+    chestEffectDisplayTimer = 0.0f;
+    chestEffectMessage.clear();
+}
+
+void GameFrontend::resolveGambleMiniGame(bool skippedClass) {
+    (void)skippedClass;
+    static std::mt19937 rng{std::random_device{}()};
+    std::uniform_int_distribution<int> resultDist(0, 1);
+    gambleMiniGameWon = resultDist(rng) == 1;
+    gambleMiniGameGold = 50;
+    if (gambleMiniGameWon) {
+        engine.addGold(gambleMiniGameGold);
+    } else {
+        engine.trySpend(gambleMiniGameGold);
+    }
+    gambleMiniGameState = GambleMiniGameState::Result;
+}
+
+void GameFrontend::handleGambleMiniGameInput() {
+    const Vector2 mouse = GetMousePosition();
+    if (gambleMiniGameState == GambleMiniGameState::Choice) {
+        if (primaryClickPressed() && CheckCollisionPointRec(mouse, gambleSkipRect())) {
+            audio.playClick();
+            blockMouseClickUntilRelease();
+            resolveGambleMiniGame(true);
+            return;
+        }
+        if (primaryClickPressed() && CheckCollisionPointRec(mouse, gambleNoSkipRect())) {
+            audio.playClick();
+            blockMouseClickUntilRelease();
+            resolveGambleMiniGame(false);
+            return;
+        }
+        if (IsKeyPressed(KEY_S)) {
+            audio.playClick();
+            resolveGambleMiniGame(true);
+            return;
+        }
+        if (IsKeyPressed(KEY_N)) {
+            audio.playClick();
+            resolveGambleMiniGame(false);
+            return;
+        }
+    } else if (gambleMiniGameState == GambleMiniGameState::Result) {
+        const bool clickedContinue = primaryClickPressed() &&
+            CheckCollisionPointRec(mouse, gambleResultContinueRect());
+        if (clickedContinue || IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_SPACE)) {
+            audio.playClick();
+            if (clickedContinue) blockMouseClickUntilRelease();
+            gambleMiniGameState = GambleMiniGameState::None;
+        }
+    }
+}
+
 void GameFrontend::startGraduationVideo() {
     graduationVideoPlayedForCurrentLevel = true;
     std::string videoPath = assetExists("assets/video/settlement.mp4")
@@ -1552,6 +1618,9 @@ void GameFrontend::handleChestEvents() {
         case ChestEventType::RewardGranted:
             chestEffectMessage = "Reward: Gold +" + std::to_string(event.amount) + "!";
             break;
+        case ChestEventType::GamblePrompt:
+            startGambleMiniGame();
+            continue;
         case ChestEventType::GambleWon:
             chestEffectMessage = "Gamble won: Gold +" + std::to_string(event.amount) + "!";
             break;
@@ -1691,6 +1760,12 @@ void GameFrontend::renderGame() {
            engine.getExerciseMode(), selectedTowerIndex, showExerciseGuide,
            engine.getTimeScale(), uiScrollOffset, &textureManager);
 
+    if (gambleMiniGameState == GambleMiniGameState::Choice) {
+        drawGambleChoice(&textureManager);
+    } else if (gambleMiniGameState == GambleMiniGameState::Result) {
+        drawGambleResult(gambleMiniGameWon, &textureManager);
+    }
+
     // Overlays
     if (currentScreen == Screen::GameOver) {
         drawGameOver(gameOverMenuSelection);
@@ -1797,7 +1872,7 @@ void GameFrontend::renderGame() {
     }
 
     // 绘制宝箱效果提示
-    if (chestEffectDisplayTimer > 0.0f && !chestEffectMessage.empty()) {
+    if (chestEffectDisplayTimer > 0.0f && !chestEffectMessage.empty() && !isGambleMiniGameActive()) {
         const std::string& msg = chestEffectMessage;
         static std::string cachedMsg;
         static int cachedTextWidth = 0;
@@ -1852,6 +1927,11 @@ void GameFrontend::runGame() {
     }
 
     if (currentScreen == Screen::Game) {
+        if (isGambleMiniGameActive()) {
+            handleGambleMiniGameInput();
+            renderGame();
+            return;
+        }
         GamePhase phase = engine.getPhase();
         if (phase == GamePhase::Build || phase == GamePhase::WaveCleared) {
             handleBuildInput();

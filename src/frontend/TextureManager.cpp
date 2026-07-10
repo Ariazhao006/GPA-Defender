@@ -1,6 +1,10 @@
-#include "frontend/TextureManager.h"
+﻿#include "frontend/TextureManager.h"
 #include "frontend/AssetPaths.h"
 #include "raylib.h"
+
+#include <filesystem>
+#include <fstream>
+#include <vector>
 
 namespace frontend {
 
@@ -20,6 +24,40 @@ bool TextureManager::loadAiTexture(const std::string& name, const std::string& p
 	aiTextures.push_back(tex);
 	// Register the full image as a sprite
 	addSprite(name, 0, 0, tex.width, tex.height, &aiTextures.back());
+	return true;
+}
+
+bool TextureManager::loadTexture(Texture2D& texture, const std::string& path) {
+	const std::string resolvedPath = resolveAssetPath(path);
+	std::ifstream in(std::filesystem::u8path(resolvedPath), std::ios::binary);
+	if (!in) {
+		TraceLog(LOG_WARNING, "Failed to open texture file: %s", resolvedPath.c_str());
+		return false;
+	}
+	in.seekg(0, std::ios::end);
+	const std::streamoff size = in.tellg();
+	in.seekg(0, std::ios::beg);
+	if (size <= 0) {
+		TraceLog(LOG_WARNING, "Empty texture file: %s", resolvedPath.c_str());
+		return false;
+	}
+	std::vector<unsigned char> bytes(static_cast<std::size_t>(size));
+	in.read(reinterpret_cast<char*>(bytes.data()), size);
+	if (!in) {
+		TraceLog(LOG_WARNING, "Failed to read texture file: %s", resolvedPath.c_str());
+		return false;
+	}
+	Image image = LoadImageFromMemory(".png", bytes.data(), static_cast<int>(bytes.size()));
+	if (image.data == nullptr) {
+		TraceLog(LOG_WARNING, "Failed to decode texture: %s", resolvedPath.c_str());
+		return false;
+	}
+	texture = LoadTextureFromImage(image);
+	UnloadImage(image);
+	if (texture.id == 0) {
+		TraceLog(LOG_WARNING, "Failed to load texture: %s", resolvedPath.c_str());
+		return false;
+	}
 	return true;
 }
 
@@ -78,6 +116,13 @@ bool TextureManager::loadAll() {
 		TraceLog(LOG_WARNING, "Failed to load texture: %s", spawnTilePath.c_str());
 		ok = false;
 	}
+
+
+	loadTexture(gamblePrompt, u8"assets/image/\u662f\u5426\u7fd8\u8bfe.png");
+	loadTexture(gambleSkip, u8"assets/image/\u7fd8\u8bfe.png");
+	loadTexture(gambleNoSkip, u8"assets/image/\u4e0d\u7fd8\u8bfe.png");
+	loadTexture(gambleLose, u8"assets/image/\u6263\u5206\u7ed3\u679c.png");
+	loadTexture(gambleWin, u8"assets/image/\u52a0\u5206\u7ed3\u679c.png");
 
 	// --- Character body sprites (80x80 each) ---
 	addSprite("blue_body_circle",    0,   147, 80, 80, &charSpritesheet);
@@ -151,6 +196,11 @@ void TextureManager::unloadAll() {
 	UnloadTexture(highlandTile015);
 	UnloadTexture(pathTile);
 	UnloadTexture(spawnTile);
+	UnloadTexture(gamblePrompt);
+	UnloadTexture(gambleSkip);
+	UnloadTexture(gambleNoSkip);
+	UnloadTexture(gambleLose);
+	UnloadTexture(gambleWin);
 	for (auto& tex : aiTextures) {
 		UnloadTexture(tex);
 	}

@@ -31,6 +31,8 @@ struct SaveSlotInfo {
     GamePhase phase = GamePhase::Build;
 };
 
+enum class GambleMiniGameState { None, Choice, Result };
+
 class GameFrontend {
 public:
     void run();
@@ -79,6 +81,9 @@ private:
     float statusBannerTimer = 0.0f;
     std::string chestEffectMessage;
     float chestEffectDisplayTimer = 0.0f;
+    GambleMiniGameState gambleMiniGameState = GambleMiniGameState::None;
+    bool gambleMiniGameWon = false;
+    int gambleMiniGameGold = 50;
 
     EffectManager effectManager;
     SettlementVideoPlayer openingVideo;
@@ -109,6 +114,10 @@ private:
     void handleGlobalInput();
     void updateGame(float dt);
     void renderGame();
+    bool isGambleMiniGameActive() const;
+    void startGambleMiniGame();
+    void resolveGambleMiniGame(bool skippedClass);
+    void handleGambleMiniGameInput();
     void startOpeningVideo();
     void updateOpeningVideo(float dt);
     void renderOpeningVideo();
