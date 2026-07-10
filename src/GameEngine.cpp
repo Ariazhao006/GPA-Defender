@@ -23,7 +23,8 @@ GameEngine::GameEngine(std::vector<WaveDefinition> waveDefinitions,
     : gold(initialGold),
     startingGold(initialGold),
     waves(std::move(waveDefinitions)),
-    waveManager(std::move(pathDefinitions)) {}
+    waveManager(pathDefinitions),
+    chestManager(std::move(pathDefinitions)) {}
 
 void GameEngine::initializeFromAsti(const AstiResult& result) {
     player.applyAstiResult(result);
@@ -38,6 +39,8 @@ void GameEngine::initializeFromAsti(const AstiResult& result) {
     gpaRecoveryCarryHp = 0.0f;
     towers.clear();
     waveManager.reset();
+    chestManager.reset();
+    chestEvents.clear();
 }
 
 bool GameEngine::startWave() {
@@ -56,6 +59,7 @@ bool GameEngine::startWave() {
 
     waveIndex = nextWaveIndex;
     waveManager.start(waves[static_cast<std::size_t>(waveIndex)]);
+    chestManager.trySpawnChestOnPath(waveIndex);
     phase = GamePhase::WaveRunning;
     return true;
 }
@@ -63,6 +67,8 @@ bool GameEngine::startWave() {
 void GameEngine::update(float deltaTime, const std::vector<Enemy*>& extraTargets) {
     if (deltaTime < 0.0f) return;
     attackEvents.clear();
+    chestManager.update(deltaTime, waveIndex, static_cast<int>(waves.size()));
+    processChestEvents();
     if (phase != GamePhase::WaveRunning) return;
 
     float scaledDelta = deltaTime * timeScale;
@@ -89,8 +95,12 @@ void GameEngine::update(float deltaTime, const std::vector<Enemy*>& extraTargets
     }
 
     std::vector<Enemy*> liveEnemies = waveManager.getLiveEnemies();
+    std::vector<Enemy*> chestTargets = chestManager.getLiveTargets();
+    std::vector<Enemy*> priorityTargets = extraTargets;
+    priorityTargets.insert(priorityTargets.end(), chestTargets.begin(), chestTargets.end());
     std::vector<Enemy*> allTargets = liveEnemies;
     allTargets.insert(allTargets.end(), extraTargets.begin(), extraTargets.end());
+    allTargets.insert(allTargets.end(), chestTargets.begin(), chestTargets.end());
     std::vector<bool> aliveBeforeTowerUpdate = waveManager.captureAliveStates();
     const float towerDeltaTime = player.getExerciseMode()
         ? scaledDelta * kExerciseTowerCadenceScale
@@ -98,13 +108,14 @@ void GameEngine::update(float deltaTime, const std::vector<Enemy*>& extraTargets
 
     for (std::unique_ptr<DefenseTower>& tower : towers) {
         if (tower != nullptr) {
+            tower->setDamageMultiplier(chestManager.getAttackMultiplier());
             const bool prioritizesChests =
                 dynamic_cast<AITower*>(tower.get()) == nullptr &&
                 dynamic_cast<LibraryTower*>(tower.get()) == nullptr &&
                 dynamic_cast<BilibiliTower*>(tower.get()) == nullptr;
-            if (prioritizesChests && !extraTargets.empty()) {
+            if (prioritizesChests && !priorityTargets.empty()) {
                 bool chestInRange = false;
-                for (Enemy* target : extraTargets) {
+                for (Enemy* target : priorityTargets) {
                     if (target != nullptr && target->getState() != EnemyState::DEAD
                         && tower->isInRange(*target)) {
                         chestInRange = true;
@@ -112,7 +123,7 @@ void GameEngine::update(float deltaTime, const std::vector<Enemy*>& extraTargets
                     }
                 }
                 if (chestInRange) {
-                    tower->update(towerDeltaTime, extraTargets, &attackEvents);
+                    tower->update(towerDeltaTime, priorityTargets, &attackEvents);
                     continue;
                 }
             }
@@ -121,6 +132,8 @@ void GameEngine::update(float deltaTime, const std::vector<Enemy*>& extraTargets
     }
 
     addGold(waveManager.collectKillRewards(aliveBeforeTowerUpdate));
+    chestManager.update(0.0f, waveIndex, static_cast<int>(waves.size()));
+    processChestEvents();
 
     if (!player.isAlive()) {
         phase = GamePhase::GameOver;
@@ -215,7 +228,26 @@ void GameEngine::setTimeScale(float scale) {
 }
 
 void GameEngine::setPaths(std::vector<std::vector<Vector2D>> pathDefinitions) {
-    waveManager.setPaths(std::move(pathDefinitions));
+    waveManager.setPaths(pathDefinitions);
+    chestManager.setPaths(std::move(pathDefinitions));
+}
+
+bool GameEngine::tryArmChest(const Vector2D& position, float radius) {
+    return chestManager.tryOpenChest(position, radius);
+}
+
+const std::vector<Chest>& GameEngine::getActiveChests() const {
+    return chestManager.getActiveChests();
+}
+
+std::vector<ChestEvent> GameEngine::consumeChestEvents() {
+    std::vector<ChestEvent> out = std::move(chestEvents);
+    chestEvents.clear();
+    return out;
+}
+
+void GameEngine::spawnChest(ChestType type, const Vector2D& position, int pathId) {
+    chestManager.spawnChest(type, position, pathId);
 }
 
 GameSnapshot GameEngine::getSnapshot() const {
@@ -328,6 +360,8 @@ void GameEngine::restoreSaveState(const SavedEngineState& state) {
     gpaRecoveryTimer = 0.0f;
     gpaRecoveryCarryHp = 0.0f;
     waveManager.reset();
+    chestManager.reset();
+    chestEvents.clear();
     towers.clear();
 
     for (const SavedTowerState& towerState : state.towers) {
@@ -340,6 +374,35 @@ void GameEngine::restoreSaveState(const SavedEngineState& state) {
         }
         tower->restoreBaseState(towerState.position, towerState.cooldown);
         towers.push_back(std::move(tower));
+    }
+}
+
+void GameEngine::processChestEvents() {
+    std::vector<ChestEvent> events = chestManager.consumeEvents();
+    for (const ChestEvent& event : events) {
+        switch (event.type) {
+        case ChestEventType::Targeted:
+        case ChestEventType::MemoryActivated:
+            break;
+        case ChestEventType::HellBossSpawned:
+            waveManager.spawnImmediate(EnemyKind::MidtermBoss, event.pathId);
+            if (phase == GamePhase::WaveCleared) phase = GamePhase::WaveRunning;
+            chestManager.clearHellEvent();
+            break;
+        case ChestEventType::RewardGranted:
+            addGold(event.amount);
+            chestManager.clearRewardEvent();
+            break;
+        case ChestEventType::GambleWon:
+            addGold(event.amount);
+            chestManager.clearGambleResult();
+            break;
+        case ChestEventType::GambleLost:
+            trySpend(event.amount);
+            chestManager.clearGambleResult();
+            break;
+        }
+        chestEvents.push_back(event);
     }
 }
 

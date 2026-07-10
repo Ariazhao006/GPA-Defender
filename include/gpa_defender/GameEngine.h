@@ -6,6 +6,7 @@
 #include <memory>
 #include <vector>
 
+#include "gpa_defender/ChestManager.h"
 #include "gpa_defender/DefenseTower.h"
 #include "gpa_defender/PlayerStats.h"
 #include "gpa_defender/Questionnaire.h"
@@ -108,11 +109,14 @@ private:
 
     std::vector<WaveDefinition> waves;
     WaveManager waveManager;
+    ChestManager chestManager;
     std::vector<std::unique_ptr<DefenseTower>> towers;
     std::vector<TowerAttackEvent> attackEvents;
+    std::vector<ChestEvent> chestEvents;
 
     bool canBuildNow() const;
     void updateSurvivalTimers(float deltaTime);
+    void processChestEvents();
     std::unique_ptr<DefenseTower> createTower(TowerKind kind) const;
 
 public:
@@ -140,6 +144,11 @@ public:
     float getTimeScale() const { return timeScale; }
 
     void setPaths(std::vector<std::vector<Vector2D>> pathDefinitions);
+
+    bool tryArmChest(const Vector2D& position, float radius);
+    const std::vector<Chest>& getActiveChests() const;
+    std::vector<ChestEvent> consumeChestEvents();
+    void spawnChest(ChestType type, const Vector2D& position, int pathId = 0);
 
     GameSnapshot getSnapshot() const;
     GamePhase getPhase() const { return phase; }

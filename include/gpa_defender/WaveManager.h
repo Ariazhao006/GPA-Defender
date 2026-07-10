@@ -47,6 +47,7 @@ private:
     std::size_t nextSpawnIndex = 0;
     float elapsedSec = 0.0f;
     bool running = false;
+    int extraSpawnCount = 0;
 
     std::unique_ptr<Enemy> createEnemy(EnemyKind kind) const;
     const std::vector<Vector2D>& resolvePath(int pathId) const;
@@ -61,6 +62,7 @@ public:
     void reset();
 
     void updateSpawning(float deltaTime);
+    void spawnImmediate(EnemyKind kind, int pathId);
     int updateEnemies(float deltaTime);
 
     std::vector<Enemy*> getLiveEnemies() const;

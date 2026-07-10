@@ -1,4 +1,5 @@
 ﻿#include "gpa_defender/DefenseTower.h"
+#include <algorithm>
 #include <cmath>
 #include <iostream> // only for console testing without a UI
 #include <utility>
@@ -33,6 +34,19 @@ void DefenseTower::restoreBaseState(const Vector2D& pos, float cooldown) {
     cooldownTimer = cooldown;
     if (cooldownTimer < 0.0f) cooldownTimer = 0.0f;
     if (cooldownTimer > attackInterval) cooldownTimer = attackInterval;
+}
+
+void DefenseTower::setDamageMultiplier(float multiplier) {
+    damageMultiplier = std::max(0.0f, multiplier);
+}
+
+int DefenseTower::effectiveDamage(int baseDamage) const {
+    if (baseDamage <= 0) return 0;
+    return std::max(1, static_cast<int>(baseDamage * damageMultiplier + 0.5f));
+}
+
+int DefenseTower::dealDamage(Enemy& target, int baseDamage) const {
+    return target.takeDamage(effectiveDamage(baseDamage));
 }
 
 std::vector<Enemy*> DefenseTower::collectAliveInRange(const std::vector<Enemy*>& enemies) const {
@@ -100,7 +114,7 @@ void DefenseTower::update(float deltaTime, const std::vector<Enemy*>& enemies,
 }
 
 void DefenseTower::attack(Enemy& target) {
-    target.takeDamage(damage);
+    dealDamage(target, damage);
 }
 
 // --- Coffee: small radius, very high burst damage ---
@@ -109,8 +123,9 @@ CoffeeTower::CoffeeTower()
     : DefenseTower("Coffee", 50, 92.0f * kTowerRangeScale, 88, 0.85f) {}
 
 void CoffeeTower::attack(Enemy& target) {
-    std::cout << "[Tower] Coffee (small arc, huge hit) -> " << damage << " damage\n";
-    target.takeDamage(damage);
+    const int dealt = effectiveDamage(damage);
+    std::cout << "[Tower] Coffee (small arc, huge hit) -> " << dealt << " damage\n";
+    target.takeDamage(dealt);
 }
 
 void CoffeeTower::draw() {}
@@ -234,8 +249,9 @@ void ClassTower::update(float deltaTime, const std::vector<Enemy*>& enemies,
 }
 
 void ClassTower::attack(Enemy& target) {
-    std::cout << "[Tower] Class formula beam -> " << damage << " damage\n";
-    target.takeDamage(damage);
+    const int dealt = effectiveDamage(damage);
+    std::cout << "[Tower] Class formula beam -> " << dealt << " damage\n";
+    target.takeDamage(dealt);
 }
 
 void ClassTower::draw() {}
@@ -328,8 +344,9 @@ void BilibiliTower::update(float deltaTime, const std::vector<Enemy*>& enemies,
 }
 
 void BilibiliTower::attack(Enemy& target) {
-    std::cout << "[Tower] Bilibili straight barrage -> " << damage << " damage\n";
-    target.takeDamage(damage);
+    const int dealt = effectiveDamage(damage);
+    std::cout << "[Tower] Bilibili straight barrage -> " << dealt << " damage\n";
+    target.takeDamage(dealt);
 }
 
 void BilibiliTower::draw() {}
@@ -403,18 +420,19 @@ void AITower::update(float deltaTime, const std::vector<Enemy*>& enemies,
         events->push_back(std::move(event));
     }
 
+    const int dealt = effectiveDamage(damage);
     std::cout << "[Tower] " << towerName << " 360 sweep nails "
-        << targets.size() << " foe(s) for " << damage << " each\n";
+        << targets.size() << " foe(s) for " << dealt << " each\n";
 
     for (Enemy* e : targets) {
-        e->takeDamage(damage);
+        e->takeDamage(dealt);
     }
 
     cooldownTimer = 0.0f;
 }
 
 void AITower::attack(Enemy& target) {
-    target.takeDamage(damage);
+    dealDamage(target, damage);
 }
 
 void AITower::draw() {}

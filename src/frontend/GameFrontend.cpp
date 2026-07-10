@@ -347,7 +347,8 @@ void GameFrontend::startNewGameFlow() {
     questionnaire = buildAstiQuestionnaire();
     answers.assign(questionnaire.getQuestions().size(), -1);
     engine = GameEngine();
-    chestManager.reset();
+    chestEffectMessage.clear();
+    chestEffectDisplayTimer = 0.0f;
     effectManager.clear();
     audio.stopBGM();
     startOpeningVideo();
@@ -627,7 +628,8 @@ bool GameFrontend::loadSaveSlot(int slot) {
     state.towers = std::move(validTowers);
 
     engine.restoreSaveState(state);
-    chestManager.reset();
+    chestEffectMessage.clear();
+    chestEffectDisplayTimer = 0.0f;
     effectManager.clear();
     selectedTowerIndex = -1;
     showExerciseGuide = false;
@@ -684,7 +686,8 @@ void GameFrontend::loadLevelDefinition(int level) {
 void GameFrontend::startLevel(int level) {
     loadLevelDefinition(level);
     engine.initializeFromAsti(astiResult);
-    chestManager.reset();
+    chestEffectMessage.clear();
+    chestEffectDisplayTimer = 0.0f;
     effectManager.clear();
     selectedTowerIndex = -1;
     showExerciseGuide = false;
@@ -1099,7 +1102,6 @@ void GameFrontend::runAstiSummary() {
         unlockedLevel = 1;
         selectedTowerIndex = -1;
         showExerciseGuide = false;
-        chestManager.reset();
         startTowerIntroVideo();
         return;
     }
@@ -1151,7 +1153,6 @@ void GameFrontend::runLevelSelect() {
         selectedTowerIndex = -1;
         showExerciseGuide = false;
         engine = GameEngine();
-        chestManager.reset();
         currentScreen = Screen::Questionnaire;
         return;
     }
@@ -1271,7 +1272,6 @@ void GameFrontend::handleBuildInput() {
                 audio.playClick();
                 if (engine.startWave()) {
                     GameSnapshot snap = engine.getSnapshot();
-                    chestManager.trySpawnChestOnPath(wavePaths, snap.waveIndex);
                     showStatusBanner("Wave " + std::to_string(snap.waveIndex + 1) + " Started");
                 }
             }
@@ -1311,7 +1311,7 @@ void GameFrontend::handleBuildInput() {
     // Map interaction
     if (primaryClickPressed()) {
         Vector2D mouseWorld{mouse.x - MAP_OFFSET_X, mouse.y - MAP_OFFSET_Y};
-        if (chestManager.tryOpenChest(mouseWorld, 46.0f)) {
+        if (engine.tryArmChest(mouseWorld, 46.0f)) {
             audio.playClick();
             blockMouseClickUntilRelease();
             return;
@@ -1406,7 +1406,6 @@ void GameFrontend::handleGlobalInput() {
         if (phase == GamePhase::Build || phase == GamePhase::WaveCleared) {
             if (engine.startWave()) {
                 GameSnapshot snap = engine.getSnapshot();
-                chestManager.trySpawnChestOnPath(wavePaths, snap.waveIndex);
                 showStatusBanner("Wave " + std::to_string(snap.waveIndex + 1) + " Started");
             }
         }
@@ -1537,13 +1536,47 @@ void GameFrontend::renderGraduationVideo() {
     endVirtualDrawing();
 }
 
+void GameFrontend::handleChestEvents() {
+    for (const ChestEvent& event : engine.consumeChestEvents()) {
+        switch (event.type) {
+        case ChestEventType::Targeted:
+            chestEffectMessage = "Chest targeted. Towers can attack it now.";
+            break;
+        case ChestEventType::MemoryActivated:
+            chestEffectMessage = "Memory Surge: tower damage halved for 10 seconds!";
+            break;
+        case ChestEventType::HellBossSpawned:
+            chestEffectMessage = "Hell Mode: an extra boss is incoming!";
+            audio.playEnemyDeath();
+            break;
+        case ChestEventType::RewardGranted:
+            chestEffectMessage = "Reward: Gold +" + std::to_string(event.amount) + "!";
+            break;
+        case ChestEventType::GambleWon:
+            chestEffectMessage = "Gamble won: Gold +" + std::to_string(event.amount) + "!";
+            break;
+        case ChestEventType::GambleLost:
+            chestEffectMessage = "Gamble lost: Gold -" + std::to_string(event.amount) + "!";
+            break;
+        }
+        chestEffectDisplayTimer = 3.0f;
+    }
+}
+
 void GameFrontend::updateGame(float dt) {
+    if (chestEffectDisplayTimer > 0.0f) {
+        chestEffectDisplayTimer -= dt;
+        if (chestEffectDisplayTimer <= 0.0f) {
+            chestEffectDisplayTimer = 0.0f;
+            chestEffectMessage.clear();
+        }
+    }
+
     int aliveBefore = engine.getWaveManager().getActiveEnemyCount();
     GamePhase phaseBefore = engine.getPhase();
 
-    GameSnapshot snapBeforeUpdate = engine.getSnapshot();
-    chestManager.update(dt, snapBeforeUpdate.waveIndex, snapBeforeUpdate.totalWaveSpawns);
-    engine.update(dt, chestManager.getLiveTargets());
+    engine.update(dt);
+    handleChestEvents();
     effectManager.spawnAll(engine.consumeAttackEvents());
     effectManager.update(dt);
 
@@ -1579,33 +1612,6 @@ void GameFrontend::updateGame(float dt) {
             audio.stopBGM();
             audio.playVictory();
             showStatusBanner("Victory");
-        }
-    }
-
-    // 处理宝箱事件
-    if (chestManager.hasHellEvent()) {
-        // 地狱模式：额外生成一个 Boss
-        chestManager.clearHellEvent();
-        // 注：这里需要在 WaveManager 中添加额外生成敌人的接口
-        // 暂时只播放音效
-        audio.playEnemyDeath(); // 复用音效
-    }
-
-    if (chestManager.hasRewardEvent()) {
-        int gold = chestManager.getRewardGold();
-        chestManager.clearRewardEvent();
-        engine.addGold(gold);
-    }
-
-    if (chestManager.hasGambleResult()) {
-        bool won = chestManager.getGambleWon();
-        int gold = chestManager.getGambleGold();
-        chestManager.clearGambleResult();
-        if (won) {
-            engine.addGold(gold);
-        } else {
-            // 扣除金币，但不小于 0
-            engine.trySpend(gold);
         }
     }
 
@@ -1678,7 +1684,7 @@ void GameFrontend::renderGame() {
         drawEnemies(engine.getWaveManager().getLiveEnemies(), &textureManager);
     }
 
-    drawChests(chestManager.getActiveChests(), &textureManager);
+    drawChests(engine.getActiveChests(), &textureManager);
     effectManager.draw();
 
     drawUI(snap, engine.getGold(), currentLevel, selectedTowerKind,
@@ -1726,14 +1732,12 @@ void GameFrontend::renderGame() {
                 showExerciseGuide = false;
                 savedGameAvailable = false;
                 engine = GameEngine();
-                chestManager.reset();
                 currentScreen = Screen::LevelSelect;
             } else {
                 selectedTowerIndex = -1;
                 showExerciseGuide = false;
                 savedGameAvailable = false;
                 engine = GameEngine();
-                chestManager.reset();
                 currentScreen = Screen::MainMenu;
             }
             gameOverMenuSelection = 0;
@@ -1780,14 +1784,12 @@ void GameFrontend::renderGame() {
                 showExerciseGuide = false;
                 savedGameAvailable = false;
                 engine = GameEngine();
-                chestManager.reset();
                 currentScreen = Screen::LevelSelect;
             } else {
                 selectedTowerIndex = -1;
                 showExerciseGuide = false;
                 savedGameAvailable = false;
                 engine = GameEngine();
-                chestManager.reset();
                 currentScreen = Screen::MainMenu;
             }
             victoryMenuSelection = 0;
@@ -1795,8 +1797,8 @@ void GameFrontend::renderGame() {
     }
 
     // 绘制宝箱效果提示
-    if (chestManager.hasEffectMessage()) {
-        const std::string& msg = chestManager.getEffectMessage();
+    if (chestEffectDisplayTimer > 0.0f && !chestEffectMessage.empty()) {
+        const std::string& msg = chestEffectMessage;
         static std::string cachedMsg;
         static int cachedTextWidth = 0;
         if (cachedMsg != msg) {

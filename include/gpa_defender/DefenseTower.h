@@ -47,9 +47,12 @@ protected:
     float attackInterval;      // seconds between two attacks
     float cooldownTimer;       // time accumulated since last attack
     bool placed;               // whether the tower has been placed on the map
+    float damageMultiplier = 1.0f;
 
     // All living enemies within circular range (used by AI sweep / library slow).
     std::vector<Enemy*> collectAliveInRange(const std::vector<Enemy*>& enemies) const;
+    int effectiveDamage(int baseDamage) const;
+    int dealDamage(Enemy& target, int baseDamage) const;
 
 public:
     DefenseTower(std::string name, int cost, float range, int damage, float attackInterval);
@@ -86,6 +89,7 @@ public:
     float getAttackInterval() const { return attackInterval; }
     bool isPlaced() const { return placed; }
     float getCooldownTimer() const { return cooldownTimer; }
+    void setDamageMultiplier(float multiplier);
     void restoreBaseState(const Vector2D& pos, float cooldown);
 };
 

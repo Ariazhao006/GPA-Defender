@@ -7,7 +7,6 @@
 #include "gpa_defender/Vector2D.h"
 #include "gpa_defender/WaveManager.h"
 #include "frontend/AudioManager.h"
-#include "frontend/ChestManager.h"
 #include "frontend/EffectManager.h"
 #include "frontend/SettlementVideoPlayer.h"
 #include "frontend/StageScore.h"
@@ -78,8 +77,9 @@ private:
     bool graduationVideoPlayedForCurrentLevel = false;
     std::string statusBannerText;
     float statusBannerTimer = 0.0f;
+    std::string chestEffectMessage;
+    float chestEffectDisplayTimer = 0.0f;
 
-    ChestManager chestManager;
     EffectManager effectManager;
     SettlementVideoPlayer openingVideo;
     SettlementVideoPlayer towerIntroVideo;
@@ -119,6 +119,7 @@ private:
     void updateGraduationVideo(float dt);
     void renderGraduationVideo();
     void detectAudioEvents();
+    void handleChestEvents();
 
     bool tryPlaceSelectedTower(int row, int col);
     const char* towerName(TowerKind kind) const;

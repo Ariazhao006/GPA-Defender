@@ -31,6 +31,7 @@ void WaveManager::start(const WaveDefinition& wave) {
     nextSpawnIndex = 0;
     elapsedSec = 0.0f;
     running = true;
+    extraSpawnCount = 0;
 }
 
 void WaveManager::reset() {
@@ -39,6 +40,12 @@ void WaveManager::reset() {
     nextSpawnIndex = 0;
     elapsedSec = 0.0f;
     running = false;
+    extraSpawnCount = 0;
+}
+
+void WaveManager::spawnImmediate(EnemyKind kind, int pathId) {
+    spawn({elapsedSec, kind, pathId});
+    ++extraSpawnCount;
 }
 
 void WaveManager::updateSpawning(float deltaTime) {
@@ -147,7 +154,7 @@ int WaveManager::getSpawnedCount() const {
 }
 
 int WaveManager::getTotalSpawnCount() const {
-    return static_cast<int>(activeWave.spawns.size());
+    return static_cast<int>(activeWave.spawns.size()) + extraSpawnCount;
 }
 
 std::unique_ptr<Enemy> WaveManager::createEnemy(EnemyKind kind) const {
