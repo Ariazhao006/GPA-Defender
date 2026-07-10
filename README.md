@@ -1,56 +1,64 @@
-﻿# GPA Defender
+# GPA Defender
 
-GPA Defender 是一个 C++17 塔防原型项目。当前仓库以 CMake 作为标准构建入口，并把核心逻辑、可执行入口、测试、文档和脚本拆分到了各自目录，方便继续开发和接入工具链。
+GPA Defender 是一个使用 C++17 和 raylib 开发的塔防游戏项目。玩家需要放置不同类型的防御塔，抵御一波波敌人，并尽量维持 GPA 与各项状态指标。
 
-## 目录结构
+## 如何运行
+
+### 方法一：直接运行脚本（推荐 Windows）
+
+在项目根目录双击：
 
 ```text
-.
-├── assets/                  # PDF 和其他静态资源
-├── docs/                    # 设计说明、后端说明、spec / plan
-├── include/gpa_defender/    # 项目头文件
-├── scripts/                 # 构建与测试脚本
-├── src/                     # 核心实现与主程序入口
-├── tests/                   # smoke test 入口与测试源码
-├── .vscode/                 # VS Code 任务与调试配置
-├── CMakeLists.txt
-└── .gitignore
+run.bat
 ```
 
-## 前置要求
+脚本会自动编译并启动游戏。第一次运行可能需要等待 raylib 和项目代码完成编译。
 
-- CMake 3.20+
-- 支持 C++17 的编译器
-- Windows 下当前已验证 `g++` 可用；VS Code 调试配置默认使用 `gdb`
+如果游戏窗口已经打开，再次运行可能会编译失败；请先关闭游戏窗口后重试。
 
-## 构建
+### 方法二：命令行运行
+
+在项目根目录打开终端，执行：
 
 ```bash
 cmake -S . -B build
-cmake --build build
+cmake --build build --target gpa_defender_gui
 ```
 
-如果 `cmake` 不在 PATH 中，可以先设置 `CMAKE_EXE` 指向对应可执行文件，再运行 `scripts/build_and_test.bat` 或 `scripts/build_and_test.sh`。
+编译完成后运行：
 
-## 测试
-
-```bash
-ctest --test-dir build --output-on-failure
+```text
+build/bin/gpa_defender_gui.exe
 ```
 
-当前注册了两个 smoke tests：
+### 方法三：使用 Visual Studio / VS Code
 
-- `backend_smoke`
-- `full_flow_smoke`
+也可以用支持 CMake 的 IDE 打开项目根目录，然后选择并运行目标：
 
-## VS Code
+```text
+gpa_defender_gui
+```
 
-- 默认构建任务：`CMake: build`
-- 测试任务：`CMake: test`
-- 调试入口：`C/C++: Run gpa_defender_app`
+## 怎么玩
 
-## 当前说明
+1. 进入游戏后点击 `New Game` 开始新游戏，按流程完成问卷和关卡选择。
+2. 在建造阶段选择右侧的防御塔，然后点击地图上的可放置位置进行建造。
+3. 点击 `Start Wave` 开始敌人进攻。敌人会沿路线移动，防御塔会自动攻击。
+4. 击败敌人可以获得金币，金币可用于建造、升级或调整防御塔。
+5. 游戏中会随机出现宝箱。点击宝箱后，防御塔会攻击宝箱；宝箱被击破后会触发奖励、挑战或小游戏事件。
+6. 目标是在所有波次结束前保护 GPA，并让各项状态指标保持在安全范围内。
 
-- `src/main.cpp` 只保留主程序入口。
-- `src/full_flow_scenario.cpp` 承载完整流程场景，供主程序和 smoke test 复用。
-- 旧的根目录 `.exe` 产物不再作为仓库内容的一部分。
+## 运行环境
+
+- CMake 3.20 或以上
+- 支持 C++17 的编译器
+- Windows 推荐使用 Visual Studio 或 MSYS2/MinGW
+
+## 项目入口
+
+- GUI 游戏入口：`src/gui_main.cpp`
+- 核心后端逻辑：`src/`
+- 头文件：`include/gpa_defender/`
+- 游戏素材：`assets/`
+
+运行时请保留 `assets` 文件夹，否则图片、音频或视频资源可能无法正常加载。
