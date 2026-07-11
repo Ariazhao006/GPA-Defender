@@ -3,6 +3,7 @@
 #define DEFENSE_TOWER_H
 
 #include <string>
+#include <utility>
 #include <vector>
 #include "gpa_defender/Vector2D.h"
 #include "gpa_defender/Enemy.h"
@@ -93,7 +94,26 @@ public:
     void restoreBaseState(const Vector2D& pos, float cooldown);
 };
 
-// --- Five concrete subclasses (Level 2 inheritance) ---
+/**
+ * @class AreaEffectTower
+ * @brief Intermediate abstract class for towers that affect every enemy inside their range.
+ *
+ * This creates a meaningful two-level inheritance chain:
+ * DefenseTower -> AreaEffectTower -> AITower / LibraryTower.
+ */
+class AreaEffectTower : public DefenseTower {
+protected:
+    AreaEffectTower(std::string name, int cost, float range, int damage, float attackInterval)
+        : DefenseTower(std::move(name), cost, range, damage, attackInterval) {}
+
+    virtual void applyAreaEffect(const std::vector<Enemy*>& targets) = 0;
+
+public:
+    void update(float deltaTime, const std::vector<Enemy*>& enemies,
+        std::vector<TowerAttackEvent>* events = nullptr) override;
+};
+
+// --- Concrete tower subclasses ---
 
 /**
  * @class CoffeeTower
@@ -112,12 +132,13 @@ public:
  * @brief AI: 360-degree sweep �� damages every enemy in range each salvo.
  *        Upgrades (Doubao -> DeepSeek -> GPT) raise per-target damage / range / cadence.
  */
-class AITower : public DefenseTower {
+class AITower : public AreaEffectTower {
 private:
     int level;                          // current level (starts at 1)
     int maxLevel;                       // max level
     std::vector<int> upgradeCosts;      // upgradeCosts[i] = gold to go from level (i+1) to (i+2)
     std::vector<std::string> levelNames;// display name per level
+    void applyAreaEffect(const std::vector<Enemy*>& targets) override;
 
 public:
     AITower();
@@ -137,9 +158,6 @@ public:
     void restoreLevelForSave(int savedLevel);
 
     TowerEffectKind effectKind() const override { return TowerEffectKind::AI; }
-    void update(float deltaTime, const std::vector<Enemy*>& enemies,
-        std::vector<TowerAttackEvent>* events = nullptr) override;
-
     void attack(Enemy& target) override;
     void draw() override;
 };
@@ -148,18 +166,16 @@ public:
  * @class LibraryTower
  * @brief Library: enemies inside radius are slowed (no direct HP damage here).
  */
-class LibraryTower : public DefenseTower {
+class LibraryTower : public AreaEffectTower {
 private:
     float slowFactor;      // multiplies enemy move speed (e.g. 0.45)
     float slowDurationSec; // how long each pulse refreshes slow
+    void applyAreaEffect(const std::vector<Enemy*>& targets) override;
 
 public:
     LibraryTower();
 
     TowerEffectKind effectKind() const override { return TowerEffectKind::Library; }
-    void update(float deltaTime, const std::vector<Enemy*>& enemies,
-        std::vector<TowerAttackEvent>* events = nullptr) override;
-
     void attack(Enemy& target) override;
     void draw() override;
 };

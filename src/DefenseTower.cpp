@@ -117,6 +117,31 @@ void DefenseTower::attack(Enemy& target) {
     dealDamage(target, damage);
 }
 
+void AreaEffectTower::update(float deltaTime, const std::vector<Enemy*>& enemies,
+    std::vector<TowerAttackEvent>* events) {
+    if (!placed) return;
+
+    cooldownTimer += deltaTime;
+    if (!canAttackNow()) return;
+
+    std::vector<Enemy*> targets = collectAliveInRange(enemies);
+    if (targets.empty()) return;
+
+    if (events != nullptr) {
+        TowerAttackEvent event;
+        event.kind = effectKind();
+        event.origin = position;
+        event.range = range;
+        for (Enemy* target : targets) {
+            event.targets.push_back(enemyCenter(*target));
+        }
+        events->push_back(std::move(event));
+    }
+
+    applyAreaEffect(targets);
+    cooldownTimer = 0.0f;
+}
+
 // --- Coffee: small radius, very high burst damage ---
 
 CoffeeTower::CoffeeTower()
@@ -133,38 +158,17 @@ void CoffeeTower::draw() {}
 // --- Library: aura slow in radius (no HP damage from this tower) ---
 
 LibraryTower::LibraryTower()
-    : DefenseTower("Library", 120, 228.0f * kTowerRangeScale, 0, 1.05f),
+    : AreaEffectTower("Library", 120, 228.0f * kTowerRangeScale, 0, 1.05f),
     slowFactor(0.45f),
     slowDurationSec(2.85f) {}
 
-void LibraryTower::update(float deltaTime, const std::vector<Enemy*>& enemies,
-    std::vector<TowerAttackEvent>* events) {
-    if (!placed) return;
-
-    cooldownTimer += deltaTime;
-    if (!canAttackNow()) return;
-
-    std::vector<Enemy*> inRange = collectAliveInRange(enemies);
-    if (inRange.empty()) return;
-
-    if (events != nullptr) {
-        TowerAttackEvent event;
-        event.kind = TowerEffectKind::Library;
-        event.origin = position;
-        event.range = range;
-        for (Enemy* e : inRange) {
-            event.targets.push_back(enemyCenter(*e));
-        }
-        events->push_back(std::move(event));
-    }
-
-    for (Enemy* e : inRange) {
+void LibraryTower::applyAreaEffect(const std::vector<Enemy*>& targets) {
+    for (Enemy* e : targets) {
         e->applySlowEffect(slowFactor, slowDurationSec);
     }
 
-    std::cout << "[Tower] Library atmosphere slows " << inRange.size()
+    std::cout << "[Tower] Library atmosphere slows " << targets.size()
         << " enemy stack(s)\n";
-    cooldownTimer = 0.0f;
 }
 
 void LibraryTower::attack(Enemy&) {
@@ -354,7 +358,7 @@ void BilibiliTower::draw() {}
 // --- AI tower: 360 sweep + upgrades ---
 
 AITower::AITower()
-    : DefenseTower("AI(Doubao)", 100, 205.0f * kTowerRangeScale, 15, 1.08f),
+    : AreaEffectTower("AI(Doubao)", 100, 205.0f * kTowerRangeScale, 15, 1.08f),
     level(1), maxLevel(3),
     upgradeCosts{ 80, 150 },
     levelNames{ "Doubao", "DeepSeek", "GPT" }
@@ -399,27 +403,7 @@ void AITower::restoreLevelForSave(int savedLevel) {
     }
 }
 
-void AITower::update(float deltaTime, const std::vector<Enemy*>& enemies,
-    std::vector<TowerAttackEvent>* events) {
-    if (!placed) return;
-
-    cooldownTimer += deltaTime;
-    if (!canAttackNow()) return;
-
-    std::vector<Enemy*> targets = collectAliveInRange(enemies);
-    if (targets.empty()) return;
-
-    if (events != nullptr) {
-        TowerAttackEvent event;
-        event.kind = TowerEffectKind::AI;
-        event.origin = position;
-        event.range = range;
-        for (Enemy* e : targets) {
-            event.targets.push_back(enemyCenter(*e));
-        }
-        events->push_back(std::move(event));
-    }
-
+void AITower::applyAreaEffect(const std::vector<Enemy*>& targets) {
     const int dealt = effectiveDamage(damage);
     std::cout << "[Tower] " << towerName << " 360 sweep nails "
         << targets.size() << " foe(s) for " << dealt << " each\n";
@@ -427,8 +411,6 @@ void AITower::update(float deltaTime, const std::vector<Enemy*>& enemies,
     for (Enemy* e : targets) {
         e->takeDamage(dealt);
     }
-
-    cooldownTimer = 0.0f;
 }
 
 void AITower::attack(Enemy& target) {
